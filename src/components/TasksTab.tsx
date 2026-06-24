@@ -1,13 +1,16 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import { dbGetAll, dbAdd, dbPut, dbDelete } from '../db';
 import { makeTask, todayStr } from '../utils';
+import { DayNight } from '../types';
 import type { PlainTask } from '../types';
 
 interface Props { db: IDBDatabase }
 
 export default function TasksTab({ db }: Props) {
-  const [tasks, setTasks] = useState<PlainTask[]>([]);
-  const [title, setTitle] = useState('');
+  const [tasks, setTasks]     = useState<PlainTask[]>([]);
+  const [title, setTitle]     = useState('');
+  const [starred, setStarred] = useState(false);
+  const [dayNight, setDayNight] = useState<DayNight>(DayNight.NIGHT);
 
   const load = useCallback(() => dbGetAll(db, 'task').then(setTasks), [db]);
   useEffect(() => { load(); }, [load]);
@@ -16,8 +19,10 @@ export default function TasksTab({ db }: Props) {
     e.preventDefault();
     const t = title.trim();
     if (!t) return;
-    await dbAdd(db, makeTask('task', { title: t }));
+    await dbAdd(db, makeTask('task', { title: t, starred, dayNight }));
     setTitle('');
+    setStarred(false);
+    setDayNight(DayNight.NIGHT);
     load();
   }
 
@@ -39,6 +44,15 @@ export default function TasksTab({ db }: Props) {
       <form className="add-form" onSubmit={addTask}>
         <div className="add-form-title">New Task</div>
         <div className="form-row">
+          <button
+            type="button"
+            className={'btn-star' + (starred ? ' active' : '')}
+            onClick={() => setStarred(prev => !prev)}
+            title={starred ? 'Starred' : 'Not starred'}
+            style={{ alignSelf: 'flex-end' }}
+          >
+            {starred ? '★' : '☆'}
+          </button>
           <div className="form-group grow">
             <label>Title</label>
             <input
@@ -48,6 +62,16 @@ export default function TasksTab({ db }: Props) {
               placeholder="What needs to be done?"
               autoFocus
             />
+          </div>
+          <div className="form-group">
+            <label>Time</label>
+            <select
+              value={dayNight}
+              onChange={e => setDayNight((e.target as HTMLSelectElement).value as DayNight)}
+            >
+              <option value="day">☀️ Day</option>
+              <option value="night">🌙 Night</option>
+            </select>
           </div>
           <button className="btn btn-primary" type="submit" style={{ alignSelf: 'flex-end' }}>
             Add
@@ -73,6 +97,7 @@ export default function TasksTab({ db }: Props) {
                   <span className="task-title">{task.title}</span>
                   <button className="btn-icon" title="Delete" onClick={() => remove(task.id)}>×</button>
                 </div>
+                <TaskMeta starred={task.starred} dayNight={task.dayNight} />
               </div>
             ))}
           </div>
@@ -90,11 +115,21 @@ export default function TasksTab({ db }: Props) {
                   <span className="task-title completed">{task.title}</span>
                   <button className="btn-icon" title="Delete" onClick={() => remove(task.id)}>×</button>
                 </div>
+                <TaskMeta starred={task.starred} dayNight={task.dayNight} />
               </div>
             ))}
           </div>
         </>
       )}
+    </div>
+  );
+}
+
+function TaskMeta({ starred, dayNight }: { starred: boolean; dayNight: DayNight }) {
+  return (
+    <div className="task-meta-row">
+      <span className="badge badge-gray">{dayNight === DayNight.NIGHT ? '🌙 Night' : '☀️ Day'}</span>
+      {starred && <span className="badge badge-amber">★ Starred</span>}
     </div>
   );
 }

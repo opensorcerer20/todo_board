@@ -25,9 +25,12 @@ export default function HomeTab({ db }: Props) {
 
   const today = todayStr();
 
-  const visibleTasks = tasks.filter(t => t.completedAt === null || t.completedAt === today);
+  const visibleTasks = tasks
+    .filter(t => t.completedAt === null || t.completedAt === today)
+    .sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0));
 
   const nextSteps: NextStep[] = projects.flatMap(p => {
+    if (p.deferred) return [];
     const step = p.steps.find(s => s.completedAt === null);
     return step ? [{ project: p, step }] : [];
   });
@@ -52,6 +55,7 @@ export default function HomeTab({ db }: Props) {
             {visibleTasks.map(task => (
               <div className="task-card" key={task.id} style={{ opacity: task.completedAt ? 0.65 : 1 }}>
                 <div className="task-card-header">
+                  {task.starred && <span className="task-star">★</span>}
                   <span className={'task-title' + (task.completedAt ? ' completed' : '')}>
                     {task.title}
                   </span>
@@ -66,11 +70,12 @@ export default function HomeTab({ db }: Props) {
         <>
           <div className="section-label">Repeat Tasks · {repeated.length}</div>
           <div className="task-list" style={{ marginBottom: 20 }}>
-            {repeated.map(task => {
+            {[...repeated].sort((a, b) => (b.starred ? 1 : 0) - (a.starred ? 1 : 0)).map(task => {
               const eligible = canLog(task);
               return (
                 <div className="task-card" key={task.id}>
                   <div className="task-card-header">
+                    {task.starred && <span className="task-star">★</span>}
                     <span className="task-title">{task.title}</span>
                     <span className={`badge ${eligible ? 'badge-purple' : 'badge-amber'}`}>
                       {eligible ? resetLabel(task) : 'Logged ✓'}
@@ -87,9 +92,10 @@ export default function HomeTab({ db }: Props) {
         <>
           <div className="section-label">Next Steps · {nextSteps.length}</div>
           <div className="task-list">
-            {nextSteps.map(({ project, step }) => (
+            {[...nextSteps].sort((a, b) => (b.step.starred ? 1 : 0) - (a.step.starred ? 1 : 0)).map(({ project, step }) => (
               <div className="task-card" key={project.id}>
                 <div className="task-card-header">
+                  {step.starred && <span className="task-star">★</span>}
                   <span className="task-title">{step.title}</span>
                   <span className="badge badge-gray">{project.title}</span>
                 </div>

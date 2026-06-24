@@ -1,24 +1,23 @@
 export type TaskType = 'task' | 'repeated' | 'multistep';
 
-/**
- * Base for all task-like things. id is string|number so top-level DB records
- * (number, auto-increment) and embedded steps (string UUID) can both extend.
- */
+export const DayNight = { DAY: 'day', NIGHT: 'night' } as const;
+export type DayNight = (typeof DayNight)[keyof typeof DayNight];
+
 export interface SimpleTask {
   id: string | number;
   type: TaskType;
   title: string;
   completedAt: string | null; // YYYY-MM-DD, or null if not complete
   createdAt: string;
-  starred: boolean; // add a star icon to the left of the task
-  dayNight: boolean; // whether the task should be done during day or night
 }
 
 /** Embedded step inside a MultiStepProject. id is a UUID string. */
 export interface MultistepTask extends SimpleTask {
   id: string;
   type: 'task';
-  deferred: boolean; // main list has non-deferred tasks, secondary list has deferred tasks
+  deferred: boolean;
+  starred: boolean;
+  dayNight: DayNight;
 }
 
 export interface RepeatedTask extends SimpleTask {
@@ -27,11 +26,14 @@ export interface RepeatedTask extends SimpleTask {
   resetDay: 'daily' | number; // 0–6
   logMode: 'today' | 'yesterday';
   logs: LogEntry[];
+  starred: boolean;
+  dayNight: DayNight;
 }
 
 export interface MultiStepProject extends SimpleTask {
   id: number;
   type: 'multistep';
+  deferred: boolean;
   steps: MultistepTask[];
 }
 
@@ -41,7 +43,7 @@ export interface LogEntry {
 }
 
 /** A plain top-level task stored directly in IndexedDB. */
-export type PlainTask = SimpleTask & { type: 'task'; id: number };
+export type PlainTask = SimpleTask & { type: 'task'; id: number; starred: boolean; dayNight: DayNight };
 
 /** Discriminated union of all top-level IndexedDB records. */
 export type AnyTask = PlainTask | RepeatedTask | MultiStepProject;

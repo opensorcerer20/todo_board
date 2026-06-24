@@ -1,3 +1,4 @@
+import { DayNight } from './types';
 import type {
   AnyTask, PlainTask, RepeatedTask, MultiStepProject, MultistepTask, TaskType,
 } from './types';
@@ -49,12 +50,12 @@ export function makeTask(type: 'task',      overrides?: Partial<Omit<PlainTask, 
 export function makeTask(type: 'repeated',  overrides?: Partial<Omit<RepeatedTask,      'id' | 'type'>>): Omit<RepeatedTask,      'id'>;
 export function makeTask(type: 'multistep', overrides?: Partial<Omit<MultiStepProject,  'id' | 'type'>>): Omit<MultiStepProject,  'id'>;
 export function makeTask(type: TaskType, overrides: Record<string, unknown> = {}): Record<string, unknown> {
-  return { type, title: '', completedAt: null, createdAt: new Date().toISOString(), starred: false, dayNight: false, ...overrides };
+  return { type, title: '', completedAt: null, createdAt: new Date().toISOString(), starred: false, dayNight: DayNight.NIGHT, deferred: false, ...overrides };
 }
 
 /** Build a new MultistepTask (step) with a UUID id. */
 export function newStep(title = ''): MultistepTask {
-  return { id: crypto.randomUUID(), type: 'task', title, completedAt: null, createdAt: new Date().toISOString(), starred: false, dayNight: false, deferred: false };
+  return { id: crypto.randomUUID(), type: 'task', title, completedAt: null, createdAt: new Date().toISOString(), starred: false, dayNight: DayNight.NIGHT, deferred: false };
 }
 
 // Re-export AnyTask so callers don't need to reach into types directly.

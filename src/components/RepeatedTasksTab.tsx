@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import { dbGetAll, dbAdd, dbPut, dbDelete } from '../db';
 import { canLog, resetLabel, todayStr, yesterdayStr, DAY_NAMES, makeTask } from '../utils';
+import { DayNight } from '../types';
 import type { RepeatedTask } from '../types';
 
 interface Props { db: IDBDatabase }
@@ -10,6 +11,8 @@ export default function RepeatedTasksTab({ db }: Props) {
   const [title, setTitle]       = useState('');
   const [resetDay, setResetDay] = useState<string>('daily');
   const [logMode, setLogMode]   = useState<'today' | 'yesterday'>('today');
+  const [starred, setStarred]   = useState(false);
+  const [dayNight, setDayNight] = useState<DayNight>(DayNight.NIGHT);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
 
   const load = useCallback(() => dbGetAll(db, 'repeated').then(setTasks), [db]);
@@ -24,10 +27,14 @@ export default function RepeatedTasksTab({ db }: Props) {
       resetDay: resetDay === 'daily' ? 'daily' : parseInt(resetDay, 10),
       logMode,
       logs: [],
+      starred,
+      dayNight,
     }));
     setTitle('');
     setResetDay('daily');
     setLogMode('today');
+    setStarred(false);
+    setDayNight(DayNight.NIGHT);
     load();
   }
 
@@ -53,6 +60,15 @@ export default function RepeatedTasksTab({ db }: Props) {
       <form className="add-form" onSubmit={addTask}>
         <div className="add-form-title">New Repeat Task</div>
         <div className="form-row">
+          <button
+            type="button"
+            className={'btn-star' + (starred ? ' active' : '')}
+            onClick={() => setStarred(prev => !prev)}
+            title={starred ? 'Starred' : 'Not starred'}
+            style={{ alignSelf: 'flex-end' }}
+          >
+            {starred ? '★' : '☆'}
+          </button>
           <div className="form-group grow-2">
             <label>Title</label>
             <input
@@ -82,6 +98,17 @@ export default function RepeatedTasksTab({ db }: Props) {
             >
               <option value="today">Today's date</option>
               <option value="yesterday">Yesterday's date</option>
+            </select>
+          </div>
+
+          <div className="form-group">
+            <label>Time</label>
+            <select
+              value={dayNight}
+              onChange={e => setDayNight((e.target as HTMLSelectElement).value as DayNight)}
+            >
+              <option value="day">☀️ Day</option>
+              <option value="night">🌙 Night</option>
             </select>
           </div>
 
@@ -124,6 +151,8 @@ export default function RepeatedTasksTab({ db }: Props) {
                 <span className="badge badge-gray">
                   {task.logMode === 'yesterday' ? '📅 Logs yesterday' : '📅 Logs today'}
                 </span>
+                <span className="badge badge-gray">{task.dayNight === DayNight.NIGHT ? '🌙 Night' : '☀️ Day'}</span>
+                {task.starred && <span className="badge badge-amber">★ Starred</span>}
                 {logCount > 0 && (
                   <span className={`badge ${eligible ? 'badge-gray' : 'badge-green'}`}>
                     {logCount} {logCount === 1 ? 'log' : 'logs'}

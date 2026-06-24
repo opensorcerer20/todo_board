@@ -16,6 +16,16 @@ Once logged, the task locks until the next reset cycle. Each log is stored with 
 
 **Multistep Tasks** are projects made up of ordered steps, where each step is itself a task with a title and completion date. Steps can be reordered in the creation form. A progress bar tracks how many steps are done.
 
+### Task metadata
+
+Every task type supports a set of optional metadata fields:
+
+| Field | Applies to | Description |
+|---|---|---|
+| **Starred** `★` | Tasks, Repeat Tasks, Multistep steps | Marks high-priority items. Starred tasks sort to the top of every Home tab section and show a gold star icon. |
+| **Day / Night** | Tasks, Repeat Tasks, Multistep steps | Tags a task as a daytime or nighttime item. Shown as a `☀️ Day` or `🌙 Night` badge on the task card. Defaults to Night. |
+| **Deferred** | Multistep projects | Hides the entire project from the Home tab until un-deferred. Shown as a `⏸ Deferred` badge on the project card. |
+
 ### Home tab
 
 The Home tab is a read-only daily dashboard that surfaces:
@@ -23,7 +33,9 @@ The Home tab is a read-only daily dashboard that surfaces:
 - All repeat tasks with their current log status
 - The **first unchecked step** from each multistep project (the next thing to do)
 
-Tasks completed on a previous day are excluded entirely from the Home view.
+Tasks completed on a previous day are excluded entirely from the Home view. Deferred multistep projects are excluded regardless of completion state.
+
+Starred items float to the top of each section and display a `★` icon.
 
 ## Tech stack
 
@@ -37,15 +49,17 @@ Tasks completed on a previous day are excluded entirely from the Home view.
 
 ## Type hierarchy
 
-All task-like things share a `SimpleTask` base (`id`, `type`, `title`, `completedAt`, `createdAt`, `starred`, `dayNight`). Each concrete type extends it:
+All task-like things share a `SimpleTask` base (`id`, `type`, `title`, `completedAt`, `createdAt`). Metadata fields are added at the level where they make sense:
 
 ```
 SimpleTask
-├── PlainTask          (type: 'task',      id: number)
-├── MultistepTask      (type: 'task',      id: string UUID) ← embedded steps only
-├── RepeatedTask       (type: 'repeated',  id: number)
-└── MultiStepProject   (type: 'multistep', id: number, steps: MultistepTask[])
+├── PlainTask          (type: 'task',      id: number,      + starred, dayNight)
+├── MultistepTask      (type: 'task',      id: string UUID, + starred, dayNight, deferred) ← embedded steps only
+├── RepeatedTask       (type: 'repeated',  id: number,      + starred, dayNight)
+└── MultiStepProject   (type: 'multistep', id: number,      + deferred, steps: MultistepTask[])
 ```
+
+`MultiStepProject` has no `starred` or `dayNight` — those belong to its individual steps.
 
 `completedAt` is `string | null` (YYYY-MM-DD) rather than a boolean so the exact completion date is always known.
 
@@ -69,6 +83,14 @@ All tests are Playwright end-to-end tests running against a real Chromium browse
 ### Task CRUD tests (`tests/tasks.spec.ts`)
 
 Focused tests for the Tasks tab: add a task, delete it, complete it, uncomplete it. These act as the functional unit tests for the core data path (form → IndexedDB → re-render).
+
+### Metadata tests (`tests/metadata.spec.ts`)
+
+Covers the starred, day/night, and deferred features across all three task types:
+
+- **Starred**: star icon appears on the Home tab; starred items sort above non-starred in all three Home sections (tasks, repeat tasks, next steps).
+- **Day/Night**: the correct `☀️ Day` or `🌙 Night` badge appears on task cards after creation; covers Tasks, Repeat Tasks, and Multistep step cards. Full emoji text is matched rather than bare words because Playwright's `hasText` is case-insensitive and `'Day'` would also match the `📅 Logs today` badge.
+- **Deferred**: a deferred multistep project is absent from the Home tab; a non-deferred one is present.
 
 ### Home tab display tests (`tests/home.spec.ts`)
 

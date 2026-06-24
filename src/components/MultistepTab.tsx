@@ -1,14 +1,16 @@
 import { useState, useEffect, useCallback } from 'preact/hooks';
 import { dbGetAll, dbAdd, dbPut, dbDelete } from '../db';
 import { makeTask, newStep, multistepComplete, todayStr } from '../utils';
+import { DayNight } from '../types';
 import type { MultiStepProject, MultistepTask } from '../types';
 
 interface Props { db: IDBDatabase }
 
 export default function MultistepTab({ db }: Props) {
-  const [tasks, setTasks] = useState<MultiStepProject[]>([]);
-  const [title, setTitle] = useState('');
-  const [steps, setSteps] = useState<MultistepTask[]>([newStep()]);
+  const [tasks, setTasks]       = useState<MultiStepProject[]>([]);
+  const [title, setTitle]       = useState('');
+  const [steps, setSteps]       = useState<MultistepTask[]>([newStep()]);
+  const [deferred, setDeferred] = useState(false);
 
   const load = useCallback(() => dbGetAll(db, 'multistep').then(setTasks), [db]);
   useEffect(() => { load(); }, [load]);
@@ -17,8 +19,8 @@ export default function MultistepTab({ db }: Props) {
     setSteps(prev => [...prev, newStep()]);
   }
 
-  function updateStep(id: string, title: string) {
-    setSteps(prev => prev.map(s => s.id === id ? { ...s, title } : s));
+  function updateStep(id: string, patch: Partial<Pick<MultistepTask, 'title' | 'starred' | 'dayNight'>>) {
+    setSteps(prev => prev.map(s => s.id === id ? { ...s, ...patch } : s));
   }
 
   function removeStep(id: string) {
@@ -42,9 +44,10 @@ export default function MultistepTab({ db }: Props) {
       .filter(s => s.title.trim())
       .map(s => ({ ...s, title: s.title.trim() }));
     if (!t || validSteps.length === 0) return;
-    await dbAdd(db, makeTask('multistep', { title: t, steps: validSteps }));
+    await dbAdd(db, makeTask('multistep', { title: t, steps: validSteps, deferred }));
     setTitle('');
     setSteps([newStep()]);
+    setDeferred(false);
     load();
   }
 
@@ -79,6 +82,14 @@ export default function MultistepTab({ db }: Props) {
               autoFocus
             />
           </div>
+          <label className="step-deferred-label" style={{ alignSelf: 'flex-end', paddingBottom: 8 }}>
+            <input
+              type="checkbox"
+              checked={deferred}
+              onChange={() => setDeferred(prev => !prev)}
+            />
+            Defer
+          </label>
         </div>
 
         <div className="steps-builder">
@@ -89,9 +100,25 @@ export default function MultistepTab({ db }: Props) {
               <input
                 type="text"
                 value={step.title}
-                onInput={e => updateStep(step.id, (e.target as HTMLInputElement).value)}
+                onInput={e => updateStep(step.id, { title: (e.target as HTMLInputElement).value })}
                 placeholder={`Step ${i + 1}…`}
               />
+              <button
+                type="button"
+                className={'btn-star btn-star-sm' + (step.starred ? ' active' : '')}
+                onClick={() => updateStep(step.id, { starred: !step.starred })}
+                title={step.starred ? 'Starred' : 'Not starred'}
+              >
+                {step.starred ? '★' : '☆'}
+              </button>
+              <select
+                className="step-day-night"
+                value={step.dayNight}
+                onChange={e => updateStep(step.id, { dayNight: (e.target as HTMLSelectElement).value as DayNight })}
+              >
+                <option value="day">☀️</option>
+                <option value="night">🌙</option>
+              </select>
               <div className="step-order-btns">
                 <button
                   type="button"
@@ -151,6 +178,12 @@ export default function MultistepTab({ db }: Props) {
                 <button className="btn-icon" title="Delete" onClick={() => remove(project.id)}>×</button>
               </div>
 
+              {project.deferred && (
+                <div className="task-meta-row">
+                  <span className="badge badge-amber">⏸ Deferred</span>
+                </div>
+              )}
+
               <div className="progress-bar-wrap">
                 <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
               </div>
@@ -166,7 +199,11 @@ export default function MultistepTab({ db }: Props) {
                       checked={step.completedAt !== null}
                       onChange={() => toggleStep(project, step.id)}
                     />
-                    <span>{step.title}</span>
+                    <span className="step-item-title">{step.title}</span>
+                    <span className="badge badge-gray step-badge">
+                      {step.dayNight === DayNight.NIGHT ? '🌙' : '☀️'}
+                    </span>
+                    {step.starred && <span className="badge badge-amber step-badge">★</span>}
                   </label>
                 ))}
               </div>
