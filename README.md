@@ -120,3 +120,8 @@ await expect(page.locator('.task-title', { hasText: 'Done yesterday' })).not.toB
 ```
 
 The reload after advancing the clock is necessary because the app reads `new Date()` during component render, not reactively. Without it, the cached in-memory state would still reflect yesterday's date evaluation.
+
+## Todo
+- edit tasks
+- export button
+- checkboxes on home tab

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'preact/hooks';
-import { openDB } from './db';
+import { openDB, migrateDB } from './db';
+import { runLegacyImport } from './legacyImport';
 import type { TaskType } from './types';
 import HomeTab from './components/HomeTab';
 import TasksTab from './components/TasksTab';
@@ -20,7 +21,11 @@ export default function App() {
   const [db, setDb]   = useState<IDBDatabase | null>(null);
 
   useEffect(() => {
-    openDB().then(setDb).catch(console.error);
+    openDB()
+      .then(db => migrateDB(db).then(() => db))
+      .then(db => runLegacyImport(db).then(() => db))
+      .then(setDb)
+      .catch(console.error);
   }, []);
 
   return (

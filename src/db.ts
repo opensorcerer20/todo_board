@@ -1,3 +1,4 @@
+import { DayNight } from './types';
 import type { AnyTask, PlainTask, RepeatedTask, MultiStepProject } from './types';
 
 const DB_NAME = 'task_board_v2';
@@ -38,6 +39,51 @@ export function dbPut(db: IDBDatabase, item: AnyTask): Promise<number> {
     const req = db.transaction('tasks', 'readwrite').objectStore('tasks').put(item);
     req.onsuccess = () => res(req.result as number);
     req.onerror = () => rej(req.error);
+  });
+}
+
+/**
+ * Backfills missing fields on existing records.
+ * Runs once on page load; skips records that are already complete.
+ */
+export function migrateDB(db: IDBDatabase): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const tx    = db.transaction('tasks', 'readwrite');
+    const store = tx.objectStore('tasks');
+    const req   = store.getAll();
+
+    req.onsuccess = () => {
+      const records = req.result as Record<string, unknown>[];
+      for (const r of records) {
+        let changed = false;
+
+        // Fields for task and repeated types
+        if (r.type === 'task' || r.type === 'repeated') {
+          if (r.starred === undefined) { r.starred = false; changed = true; }
+          if (r.dayNight === undefined) { r.dayNight = DayNight.NIGHT; changed = true; }
+        }
+
+        // Fields for multistep projects and their steps
+        if (r.type === 'multistep') {
+          if (r.deferred === undefined) { r.deferred = false; changed = true; }
+          const steps = r.steps as Record<string, unknown>[] | undefined;
+          if (Array.isArray(steps)) {
+            for (const s of steps) {
+              if (s.starred === undefined)  { s.starred = false; changed = true; }
+              if (s.dayNight === undefined) { s.dayNight = DayNight.NIGHT; changed = true; }
+              if (s.deferred === undefined) { s.deferred = false; changed = true; }
+            }
+          }
+        }
+
+        if (changed) store.put(r);
+      }
+
+      tx.oncomplete = () => resolve();
+      tx.onerror    = () => reject(tx.error);
+    };
+
+    req.onerror = () => reject(req.error);
   });
 }
 

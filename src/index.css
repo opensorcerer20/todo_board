@@ -204,7 +204,7 @@ select:focus {
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius);
-  padding: 14px 16px;
+  padding: 7px 8px;
   box-shadow: var(--shadow-sm);
   transition: box-shadow 0.15s;
 }
@@ -304,6 +304,31 @@ input[type='checkbox'] {
   font-size: 11.5px;
   font-weight: 500;
   font-variant-numeric: tabular-nums;
+}
+
+/* ── Home grid ──────────────────────────────────────────── */
+.home-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: auto auto;
+  gap: 20px;
+}
+
+.home-col {}
+
+.home-col-label {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+}
+
+.home-col-empty {
+  font-size: 13px;
+  color: var(--text-muted);
+  padding: 10px 0;
 }
 
 /* ── Section labels ─────────────────────────────────────── */
