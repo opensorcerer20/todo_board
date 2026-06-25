@@ -1,16 +1,31 @@
-import { useState, useEffect, useCallback } from 'preact/hooks';
-import { dbGetAll, dbAdd, dbPut, dbDelete } from '../db';
-import { makeTask, todayStr } from '../utils';
-import { DayNight } from '../types';
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'preact/hooks';
+
+import {
+  dbAdd,
+  dbDelete,
+  dbGetAll,
+  dbPut,
+} from '../db';
 import type { PlainTask } from '../types';
+import { DayNight } from '../types';
+import {
+  makeTask,
+  todayStr,
+} from '../utils';
 
 interface Props { db: IDBDatabase }
 
 export default function TasksTab({ db }: Props) {
-  const [tasks, setTasks]     = useState<PlainTask[]>([]);
-  const [title, setTitle]     = useState('');
-  const [starred, setStarred] = useState(false);
-  const [dayNight, setDayNight] = useState<DayNight>(DayNight.NIGHT);
+  const [tasks, setTasks]       = useState<PlainTask[]>([]);
+  const [title, setTitle]       = useState('');
+  const [starred, setStarred]   = useState(false);
+  const [dayNight, setDayNight] = useState<typeof DayNight[keyof typeof DayNight]>(DayNight.NIGHT);
+  const [editing, setEditing]   = useState<PlainTask | null>(null);
 
   const load = useCallback(() => dbGetAll(db, 'task').then(setTasks), [db]);
   useEffect(() => { load(); }, [load]);
@@ -33,6 +48,13 @@ export default function TasksTab({ db }: Props) {
 
   async function remove(id: number) {
     await dbDelete(db, id);
+    load();
+  }
+
+  async function saveEdit(patch: Pick<PlainTask, 'title' | 'starred' | 'dayNight'>) {
+    if (!editing) return;
+    await dbPut(db, { ...editing, ...patch });
+    setEditing(null);
     load();
   }
 
@@ -67,7 +89,7 @@ export default function TasksTab({ db }: Props) {
             <label>Time</label>
             <select
               value={dayNight}
-              onChange={e => setDayNight((e.target as HTMLSelectElement).value as DayNight)}
+              onChange={e => setDayNight((e.target as HTMLSelectElement).value as typeof DayNight[keyof typeof DayNight])}
             >
               <option value="day">☀️ Day</option>
               <option value="night">🌙 Night</option>
@@ -95,6 +117,7 @@ export default function TasksTab({ db }: Props) {
                 <div className="task-card-header">
                   <input type="checkbox" checked={false} onChange={() => toggle(task)} />
                   <span className="task-title">{task.title}</span>
+                  <button className="btn-icon btn-edit" title="Edit" onClick={() => setEditing(task)}>🖌</button>
                   <button className="btn-icon" title="Delete" onClick={() => remove(task.id)}>×</button>
                 </div>
                 <TaskMeta starred={task.starred} dayNight={task.dayNight} />
@@ -113,6 +136,7 @@ export default function TasksTab({ db }: Props) {
                 <div className="task-card-header">
                   <input type="checkbox" checked={true} onChange={() => toggle(task)} />
                   <span className="task-title completed">{task.title}</span>
+                  <button className="btn-icon btn-edit" title="Edit" onClick={() => setEditing(task)}>🖌</button>
                   <button className="btn-icon" title="Delete" onClick={() => remove(task.id)}>×</button>
                 </div>
                 <TaskMeta starred={task.starred} dayNight={task.dayNight} />
@@ -121,15 +145,105 @@ export default function TasksTab({ db }: Props) {
           </div>
         </>
       )}
+
+      {editing && (
+        <EditModal
+          task={editing}
+          onSave={saveEdit}
+          onClose={() => setEditing(null)}
+        />
+      )}
     </div>
   );
 }
 
-function TaskMeta({ starred, dayNight }: { starred: boolean; dayNight: DayNight }) {
+function TaskMeta({ starred, dayNight }: { starred: boolean; dayNight: typeof DayNight[keyof typeof DayNight] }) {
   return (
     <div className="task-meta-row">
       <span className="badge badge-gray">{dayNight === DayNight.NIGHT ? '🌙 Night' : '☀️ Day'}</span>
       {starred && <span className="badge badge-amber">★ Starred</span>}
+    </div>
+  );
+}
+
+function EditModal({
+  task,
+  onSave,
+  onClose,
+}: {
+  task: PlainTask;
+  onSave: (patch: Pick<PlainTask, 'title' | 'starred' | 'dayNight'>) => void;
+  onClose: () => void;
+}) {
+  const [title, setTitle]       = useState(task.title);
+  const [starred, setStarred]   = useState(task.starred);
+  const [dayNight, setDayNight] = useState<typeof DayNight[keyof typeof DayNight]>(task.dayNight ?? DayNight.NIGHT);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
+  function submit(e: Event) {
+    e.preventDefault();
+    const t = title.trim();
+    if (!t) return;
+    onSave({ title: t, starred, dayNight });
+  }
+
+  return (
+    <div className="modal-backdrop" onClick={onClose}>
+      <div className="modal-card" onClick={e => e.stopPropagation()}>
+        <div className="modal-header">
+          <span className="modal-title">Edit Task</span>
+          <button className="btn-icon" onClick={onClose}>×</button>
+        </div>
+        <form onSubmit={submit}>
+          <div className="form-row" style={{ marginBottom: 16 }}>
+            <button
+              type="button"
+              className={'btn-star' + (starred ? ' active' : '')}
+              onClick={() => setStarred(prev => !prev)}
+              title={starred ? 'Starred' : 'Not starred'}
+              style={{ alignSelf: 'flex-end' }}
+            >
+              {starred ? '★' : '☆'}
+            </button>
+            <div className="form-group grow">
+              <label>Title</label>
+              <input
+                ref={inputRef}
+                type="text"
+                value={title}
+                onInput={e => setTitle((e.target as HTMLInputElement).value)}
+              />
+            </div>
+            <div className="form-group">
+              <label>Time</label>
+              <select
+                value={dayNight}
+                onChange={e => setDayNight((e.target as HTMLSelectElement).value as typeof DayNight[keyof typeof DayNight])}
+              >
+                <option value="day">☀️ Day</option>
+                <option value="night">🌙 Night</option>
+              </select>
+            </div>
+          </div>
+          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+            <button type="button" className="btn" onClick={onClose} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
+              Cancel
+            </button>
+            <button type="submit" className="btn btn-primary">Save</button>
+          </div>
+        </form>
+      </div>
     </div>
   );
 }
