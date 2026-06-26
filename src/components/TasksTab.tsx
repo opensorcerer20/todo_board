@@ -14,6 +14,11 @@ import {
 import type { PlainTask } from '../types';
 import { DayNight } from '../types';
 import {
+  DayNightSelect,
+  StarToggle,
+  TitleInput,
+} from './fields';
+import {
   makeTask,
   todayStr,
 } from '../utils';
@@ -66,35 +71,9 @@ export default function TasksTab({ db }: Props) {
       <form className="add-form" onSubmit={addTask}>
         <div className="add-form-title">New Task</div>
         <div className="form-row">
-          <button
-            type="button"
-            className={'btn-star' + (starred ? ' active' : '')}
-            onClick={() => setStarred(prev => !prev)}
-            title={starred ? 'Starred' : 'Not starred'}
-            style={{ alignSelf: 'flex-end' }}
-          >
-            {starred ? '★' : '☆'}
-          </button>
-          <div className="form-group grow">
-            <label>Title</label>
-            <input
-              type="text"
-              value={title}
-              onInput={e => setTitle((e.target as HTMLInputElement).value)}
-              placeholder="What needs to be done?"
-              autoFocus
-            />
-          </div>
-          <div className="form-group">
-            <label>Time</label>
-            <select
-              value={dayNight}
-              onChange={e => setDayNight((e.target as HTMLSelectElement).value as typeof DayNight[keyof typeof DayNight])}
-            >
-              <option value="day">☀️ Day</option>
-              <option value="night">🌙 Night</option>
-            </select>
-          </div>
+          <StarToggle starred={starred} onToggle={() => setStarred(p => !p)} style={{ alignSelf: 'flex-end' }} />
+          <TitleInput value={title} onChange={setTitle} placeholder="What needs to be done?" autoFocus />
+          <DayNightSelect value={dayNight} onChange={setDayNight} />
           <button className="btn btn-primary" type="submit" style={{ alignSelf: 'flex-end' }}>
             Add
           </button>
@@ -157,6 +136,8 @@ export default function TasksTab({ db }: Props) {
   );
 }
 
+// ── Badge display ─────────────────────────────────────────────────────────────
+
 function TaskMeta({ starred, dayNight }: { starred: boolean; dayNight: typeof DayNight[keyof typeof DayNight] }) {
   return (
     <div className="task-meta-row">
@@ -207,34 +188,9 @@ function EditModal({
         </div>
         <form onSubmit={submit}>
           <div className="form-row" style={{ marginBottom: 16 }}>
-            <button
-              type="button"
-              className={'btn-star' + (starred ? ' active' : '')}
-              onClick={() => setStarred(prev => !prev)}
-              title={starred ? 'Starred' : 'Not starred'}
-              style={{ alignSelf: 'flex-end' }}
-            >
-              {starred ? '★' : '☆'}
-            </button>
-            <div className="form-group grow">
-              <label>Title</label>
-              <input
-                ref={inputRef}
-                type="text"
-                value={title}
-                onInput={e => setTitle((e.target as HTMLInputElement).value)}
-              />
-            </div>
-            <div className="form-group">
-              <label>Time</label>
-              <select
-                value={dayNight}
-                onChange={e => setDayNight((e.target as HTMLSelectElement).value as typeof DayNight[keyof typeof DayNight])}
-              >
-                <option value="day">☀️ Day</option>
-                <option value="night">🌙 Night</option>
-              </select>
-            </div>
+            <StarToggle starred={starred} onToggle={() => setStarred(p => !p)} style={{ alignSelf: 'flex-end' }} />
+            <TitleInput value={title} onChange={setTitle} inputRef={inputRef} />
+            <DayNightSelect value={dayNight} onChange={setDayNight} />
           </div>
           <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
             <button type="button" className="btn" onClick={onClose} style={{ background: 'var(--bg)', color: 'var(--text)' }}>

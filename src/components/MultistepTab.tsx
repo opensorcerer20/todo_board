@@ -3,6 +3,7 @@ import { dbGetAll, dbAdd, dbPut, dbDelete } from '../db';
 import { makeTask, newStep, multistepComplete, todayStr } from '../utils';
 import { DayNight } from '../types';
 import type { MultiStepProject, MultistepTask } from '../types';
+import { DayNightSelect, StarToggle } from './fields';
 
 interface Props { db: IDBDatabase }
 
@@ -103,22 +104,16 @@ export default function MultistepTab({ db }: Props) {
                 onInput={e => updateStep(step.id, { title: (e.target as HTMLInputElement).value })}
                 placeholder={`Step ${i + 1}…`}
               />
-              <button
-                type="button"
-                className={'btn-star btn-star-sm' + (step.starred ? ' active' : '')}
-                onClick={() => updateStep(step.id, { starred: !step.starred })}
-                title={step.starred ? 'Starred' : 'Not starred'}
-              >
-                {step.starred ? '★' : '☆'}
-              </button>
-              <select
-                className="step-day-night"
+              <StarToggle
+                size="sm"
+                starred={step.starred}
+                onToggle={() => updateStep(step.id, { starred: !step.starred })}
+              />
+              <DayNightSelect
+                compact
                 value={step.dayNight}
-                onChange={e => updateStep(step.id, { dayNight: (e.target as HTMLSelectElement).value as DayNight })}
-              >
-                <option value="day">☀️</option>
-                <option value="night">🌙</option>
-              </select>
+                onChange={v => updateStep(step.id, { dayNight: v })}
+              />
               <div className="step-order-btns">
                 <button
                   type="button"
