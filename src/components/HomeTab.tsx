@@ -134,7 +134,8 @@ export default function HomeTab({ db }: Props) {
 
   // Plain tasks for this domain: incomplete + completed today
   interface TaskItem {
-    key: string; title: string; done: boolean; starred: boolean; hasTag: boolean; tag: string; isProject: boolean;
+    key: string; title: string; done: boolean; starred: boolean;
+    projectName: string; stepLabel: string; isProject: boolean;
   }
 
   const plainItems: TaskItem[] = tasks
@@ -142,7 +143,7 @@ export default function HomeTab({ db }: Props) {
     .map(t => ({
       key: 'task-' + t.id,
       title: t.title, done: t.completedAt !== null,
-      starred: t.starred, hasTag: false, tag: '', isProject: false,
+      starred: t.starred, projectName: '', stepLabel: '', isProject: false,
     }));
 
   // Only show a project's current step (first incomplete overall) if it matches the domain.
@@ -156,8 +157,9 @@ export default function HomeTab({ db }: Props) {
     return [{
       key: 'step-' + p.id + '-' + step.id,
       title: step.title, done: false,
-      starred: step.starred, hasTag: true,
-      tag: p.title + ' · Step ' + stepNo + ' of ' + p.steps.length,
+      starred: step.starred,
+      projectName: p.title,
+      stepLabel: 'Step ' + stepNo + ' of ' + p.steps.length,
       isProject: true,
     }];
   });
@@ -199,7 +201,7 @@ export default function HomeTab({ db }: Props) {
       hasNext: !!nextStep,
       barStyle: {
         height: '100%', background: ACCENT, borderRadius: '99px',
-        width: Math.round((completedCount / Math.max(total, 1)) * 100) + '%',
+        width: (completedCount === 0 ? 1 : Math.round((completedCount / Math.max(total, 1)) * 100)) + '%',
       },
     };
   });
@@ -246,8 +248,11 @@ export default function HomeTab({ db }: Props) {
                             <span style={{ color: '#d8a85a', fontSize: '13px', lineHeight: '1' }}>★</span>
                             <span style={taskTitleStyle(t.done)}>{t.title}</span>
                           </div>
-                          {t.hasTag && (
-                            <div style={{ fontFamily: MONO, fontSize: '11px', color: '#7a818f', marginTop: '4px', paddingLeft: '20px' }}>{t.tag}</div>
+                          {t.isProject && (
+                            <div style={{ display: 'flex', gap: '5px', marginTop: '5px', marginLeft: '20px', flexWrap: 'wrap' }}>
+                              <span style={{ fontFamily: MONO, fontSize: '10px', color: '#8fa5d0', border: '1px solid rgba(111,125,165,0.3)', borderRadius: '99px', padding: '2px 8px', whiteSpace: 'nowrap', background: 'rgba(111,125,165,0.12)' }}>{t.projectName}</span>
+                              <span style={{ fontFamily: MONO, fontSize: '10px', color: '#8fa5d0', border: '1px solid rgba(111,125,165,0.3)', borderRadius: '99px', padding: '2px 8px', whiteSpace: 'nowrap', background: 'rgba(111,125,165,0.12)' }}>{t.stepLabel}</span>
+                            </div>
                           )}
                         </div>
                       </div>
@@ -261,10 +266,10 @@ export default function HomeTab({ db }: Props) {
                     <div style={taskBoxStyle(t.done)}>{t.done && '✓'}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <span style={taskTitleStyle(t.done)}>{t.title}</span>
-                      {t.hasTag && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                          {t.isProject && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#6f7da5', flexShrink: 0 }}></span>}
-                          <span style={{ fontFamily: MONO, fontSize: '11px', color: '#7a818f' }}>{t.tag}</span>
+                      {t.isProject && (
+                        <div style={{ display: 'flex', gap: '5px', marginTop: '5px', flexWrap: 'wrap' }}>
+                          <span style={{ fontFamily: MONO, fontSize: '10px', color: '#8fa5d0', border: '1px solid rgba(111,125,165,0.3)', borderRadius: '99px', padding: '2px 8px', whiteSpace: 'nowrap', background: 'rgba(111,125,165,0.12)' }}>{t.projectName}</span>
+                          <span style={{ fontFamily: MONO, fontSize: '10px', color: '#8fa5d0', border: '1px solid rgba(111,125,165,0.3)', borderRadius: '99px', padding: '2px 8px', whiteSpace: 'nowrap', background: 'rgba(111,125,165,0.12)' }}>{t.stepLabel}</span>
                         </div>
                       )}
                     </div>
@@ -290,7 +295,7 @@ export default function HomeTab({ db }: Props) {
                   <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '11px 0', borderTop: '1px solid #262b34' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '15px', color: '#dfe2ea', fontWeight: 500 }}>{h.title}</div>
-                      <div style={{ fontFamily: MONO, fontSize: '11px', color: '#7a818f', marginTop: '3px' }}>{h.streakLabel}</div>
+                      <span style={{ display: 'inline-block', marginTop: '5px', fontFamily: MONO, fontSize: '10px', color: '#7fb295', border: '1px solid rgba(95,143,116,0.3)', borderRadius: '99px', padding: '2px 8px', whiteSpace: 'nowrap', background: 'rgba(95,143,116,0.12)' }}>{h.streakLabel}</span>
                     </div>
                     <div style={habitCircleStyle(h.doneToday)}>{h.doneToday && '✓'}</div>
                   </div>
@@ -313,9 +318,9 @@ export default function HomeTab({ db }: Props) {
             {mappedProjects.length === 0 ? (
               <div style={{ fontFamily: MONO, fontSize: '12px', color: '#4a5060', padding: '8px 0' }}>No active projects</div>
             ) : (
-              <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-                {mappedProjects.map(p => (
-                  <div key={p.id}>
+              <div style={{ display: 'flex', flexDirection: 'column' }}>
+                {mappedProjects.map((p, i) => (
+                  <div key={p.id} style={i > 0 ? { borderTop: '1px solid #2a2f3a', marginTop: '18px', paddingTop: '18px' } : {}}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px' }}>
                       <div style={{ fontSize: '15px', fontWeight: 600, color: '#e3e6ee' }}>{p.name}</div>
                       <div style={{ fontFamily: MONO, fontSize: '11px', color: '#7a818f', whiteSpace: 'nowrap' }}>{p.stepLabel}</div>
@@ -330,12 +335,11 @@ export default function HomeTab({ db }: Props) {
                           {p.currentStarred && <span style={{ color: '#d8a85a', marginRight: '5px' }}>★</span>}
                           {p.current}
                         </div>
-                        <div style={{ fontFamily: MONO, fontSize: '9px', color: '#6f7686', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: '3px' }}>Current step</div>
                       </div>
                     </div>
                     {p.hasNext && (
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px', marginTop: '8px', paddingLeft: '2px' }}>
-                        <span style={{ fontFamily: MONO, fontSize: '9px', color: '#7a818f', textTransform: 'uppercase', letterSpacing: '.08em', flexShrink: 0 }}>On deck</span>
+                        <span style={{ fontFamily: MONO, fontSize: '9px', color: '#8fa5d0', border: '1px solid rgba(111,125,165,0.3)', borderRadius: '99px', padding: '2px 8px', letterSpacing: '.06em', textTransform: 'uppercase', background: 'rgba(111,125,165,0.12)', flexShrink: 0 }}>On deck</span>
                         <span style={{ fontSize: '12.5px', color: '#838ca2', minWidth: 0 }}>
                           {p.nextStarred && <span style={{ color: '#d8a85a', marginRight: '4px' }}>★</span>}
                           {p.next}
