@@ -1,11 +1,18 @@
-import { useState, useEffect } from 'preact/hooks';
-import { openDB, migrateDB } from './db';
-import { runLegacyImport } from './legacyImport';
-import type { TaskType } from './types';
+import {
+  useEffect,
+  useState,
+} from 'preact/hooks';
+
 import HomeTab from './components/HomeTab';
-import TasksTab from './components/TasksTab';
-import RepeatedTasksTab from './components/RepeatedTasksTab';
 import MultistepTab from './components/MultistepTab';
+import RepeatedTasksTab from './components/RepeatedTasksTab';
+import TasksTab from './components/TasksTab';
+import {
+  migrateDB,
+  openDB,
+} from './db';
+// import { runLegacyImport } from './legacyImport';
+import type { TaskType } from './types';
 
 type Tab = TaskType | 'home';
 
@@ -23,7 +30,7 @@ export default function App() {
   useEffect(() => {
     openDB()
       .then(db => migrateDB(db).then(() => db))
-      .then(db => runLegacyImport(db).then(() => db))
+      // .then(db => runLegacyImport(db).then(() => db))
       .then(setDb)
       .catch(console.error);
   }, []);
