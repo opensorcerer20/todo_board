@@ -1,4 +1,8 @@
-import { useState } from 'preact/hooks';
+import { useCallback, useEffect, useState } from 'preact/hooks';
+import { dbGetAll } from '../db';
+import { canLog, resetLabel, todayStr } from '../utils';
+import { DayNight } from '../types';
+import type { MultiStepProject, PlainTask, RepeatedTask } from '../types';
 
 interface Props { db: IDBDatabase }
 
@@ -6,55 +10,7 @@ type Domain = 'day' | 'night';
 
 const ACCENT = '#7d8cc4';
 
-// ── Static placeholder data ───────────────────────────────────────────────────
-
-interface RawTask { title: string; starred?: boolean; tag?: string; isProject?: boolean; done?: boolean }
-interface RawHabit { title: string; streak: number; isAvoid: boolean; doneToday?: boolean; status?: string }
-interface RawProject { name: string; stepNo: number; total: number; current: string; next?: string }
-
-const DATA: Record<Domain, { tasks: RawTask[]; habits: RawHabit[]; projects: RawProject[] }> = {
-  day: {
-    tasks: [
-      { title: 'Send Q3 budget to Mara', starred: true, tag: 'Due 4pm' },
-      { title: 'Reply to vendor contract email', starred: true },
-      { title: 'Finalize homepage copy', tag: 'Website redesign · Step 4 of 9', isProject: true },
-      { title: 'Schedule onsite interview loops', tag: 'Hiring: Designer · Step 2 of 5', isProject: true },
-      { title: 'Pick up printed banners', tag: 'Errand' },
-      { title: 'Book flights for the offsite' },
-      { title: 'Review PR #482', done: true },
-    ],
-    habits: [
-      { title: 'Inbox to zero', streak: 8, isAvoid: false, doneToday: true },
-      { title: 'No Slack before 10am', streak: 12, isAvoid: true, status: 'clean' },
-    ],
-    projects: [
-      { name: 'Website redesign', stepNo: 4, total: 9, current: 'Finalize homepage copy', next: 'Dev handoff for header' },
-      { name: 'Hiring: Designer', stepNo: 2, total: 5, current: 'Schedule onsite loops', next: 'Send debrief survey' },
-    ],
-  },
-  night: {
-    tasks: [
-      { title: 'Call Mom', starred: true },
-      { title: 'Finish Unit 3 grammar', tag: 'Learn Spanish · Step 3 of 12', isProject: true },
-      { title: 'Get 3 contractor quotes', tag: 'Kitchen reno · Step 1 of 7', isProject: true },
-      { title: 'Renew passport', tag: 'Errand' },
-      { title: 'Return Amazon package', tag: 'Errand' },
-      { title: 'Buy running shoes' },
-    ],
-    habits: [
-      { title: 'Meditate 10 min', streak: 23, isAvoid: false, doneToday: true },
-      { title: 'Read before bed', streak: 5, isAvoid: false, doneToday: false },
-      { title: 'No phone in bed', streak: 4, isAvoid: true, status: 'clean' },
-      { title: 'No sugar', streak: 0, isAvoid: true, status: 'logged' },
-    ],
-    projects: [
-      { name: 'Learn Spanish', stepNo: 3, total: 12, current: 'Finish Unit 3 grammar', next: 'Start Unit 4 vocab' },
-      { name: 'Kitchen renovation', stepNo: 1, total: 7, current: 'Get 3 contractor quotes', next: 'Compare bids & pick' },
-    ],
-  },
-};
-
-// ── Style helpers (adapted from design DCLogic) ───────────────────────────────
+// ── Style helpers ─────────────────────────────────────────────────────────────
 
 function domainBtnStyle(active: boolean) {
   return {
@@ -73,86 +29,182 @@ const BOX_BASE = {
   flexShrink: 0, marginTop: '1px',
 };
 
-const PILL_BASE = {
-  fontFamily: "'Space Mono', monospace", fontSize: '11px',
-  padding: '5px 11px', borderRadius: '99px', whiteSpace: 'nowrap' as const, fontWeight: 700,
-};
-
 const CIRCLE_BASE = {
   width: '27px', height: '27px', borderRadius: '50%', display: 'flex' as const,
   alignItems: 'center', justifyContent: 'center', flexShrink: 0, fontSize: '13px',
 };
 
-function mapTask(t: RawTask) {
-  const done = !!t.done;
-  return {
-    title: t.title, done, starred: !!t.starred,
-    isProject: !!t.isProject, hasTag: !!t.tag, tag: t.tag ?? '',
-    boxStyle: done
-      ? { ...BOX_BASE, background: ACCENT, border: '1.5px solid ' + ACCENT, color: '#fff' }
-      : { ...BOX_BASE, background: 'transparent', border: '1.5px solid #e3e6ee', color: 'transparent' },
-    titleStyle: done
-      ? { fontSize: '15px', fontWeight: 500, color: '#6a7080', textDecoration: 'line-through' as const }
-      : { fontSize: '15px', fontWeight: 500, color: '#e3e6ee' },
-  };
+function taskBoxStyle(done: boolean) {
+  return done
+    ? { ...BOX_BASE, background: ACCENT, border: '1.5px solid ' + ACCENT, color: '#fff' }
+    : { ...BOX_BASE, background: 'transparent', border: '1.5px solid #e3e6ee', color: 'transparent' };
 }
 
-function mapHabit(h: RawHabit) {
-  if (h.isAvoid) {
-    const logged = h.status === 'logged';
-    return {
-      title: h.title, isAvoid: true, isBuild: false, doneToday: false,
-      streakLabel: logged ? 'Streak reset' : h.streak + ' days clean',
-      pillStyle: logged
-        ? { ...PILL_BASE, background: '#2c2620', color: '#cf9f54' }
-        : { ...PILL_BASE, background: '#1d2a22', color: '#7fb295' },
-      pillText: logged ? 'Logged yesterday' : 'Clean today',
-      loggedToday: !logged, circleStyle: CIRCLE_BASE,
-    };
+function taskTitleStyle(done: boolean) {
+  return done
+    ? { fontSize: '15px', fontWeight: 500, color: '#6a7080', textDecoration: 'line-through' as const }
+    : { fontSize: '15px', fontWeight: 500, color: '#e3e6ee' };
+}
+
+function habitCircleStyle(done: boolean) {
+  return done
+    ? { ...CIRCLE_BASE, background: '#5f8f74', color: '#fff', border: '1px solid #5f8f74' }
+    : { ...CIRCLE_BASE, background: 'transparent', color: '#e3e6ee', border: '1.5px solid #e3e6ee' };
+}
+
+const MONO = "'Space Mono', monospace";
+
+// ── Streak helpers ────────────────────────────────────────────────────────────
+
+function addDays(dateStr: string, n: number): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() + n);
+  return [dt.getFullYear(), String(dt.getMonth() + 1).padStart(2, '0'), String(dt.getDate()).padStart(2, '0')].join('-');
+}
+
+function weekCycleStart(date: string, weekday: number): string {
+  const [y, m, d] = date.split('-').map(Number);
+  const dt = new Date(y, m - 1, d);
+  dt.setDate(dt.getDate() - ((dt.getDay() - weekday + 7) % 7));
+  return [dt.getFullYear(), String(dt.getMonth() + 1).padStart(2, '0'), String(dt.getDate()).padStart(2, '0')].join('-');
+}
+
+function computeStreak(task: RepeatedTask, today: string): number {
+  if (task.logs.length === 0) return 0;
+
+  if (task.resetDay === 'daily') {
+    const dates = [...new Set(task.logs.map(l => l.recordedDate))].sort().reverse();
+    // For today-mode: anchor is today; streak alive if last recorded is today or yesterday.
+    // For yesterday-mode: anchor is yesterday (today's action records as yesterday);
+    //   streak alive if last recorded is yesterday or 2 days ago.
+    const anchor = task.logMode === 'today' ? today : addDays(today, -1);
+    if (dates[0] !== anchor && dates[0] !== addDays(anchor, -1)) return 0;
+    let n = 1;
+    for (let i = 1; i < dates.length; i++) {
+      if (dates[i] === addDays(dates[i - 1], -1)) n++;
+      else break;
+    }
+    return n;
   }
-  return {
-    title: h.title, isAvoid: false, isBuild: true,
-    streakLabel: h.streak + ' day streak',
-    doneToday: !!h.doneToday, loggedToday: !!h.doneToday,
-    circleStyle: h.doneToday
-      ? { ...CIRCLE_BASE, background: '#5f8f74', color: '#fff', border: '1px solid #5f8f74' }
-      : { ...CIRCLE_BASE, background: 'transparent', color: '#e3e6ee', border: '1.5px solid #e3e6ee' },
-    pillStyle: PILL_BASE, pillText: '',
-  };
+
+  // Weekly: streak = consecutive completed cycles going backward from the most recent logged one.
+  const wd = task.resetDay as number;
+  const actions = task.logs.map(l => l.actionDate);
+  const curStart  = weekCycleStart(today, wd);
+  const prevStart = addDays(curStart, -7);
+  const inCurrent = actions.some(d => d >= curStart);
+  const inPrev    = actions.some(d => d >= prevStart && d < curStart);
+  if (!inCurrent && !inPrev) return 0;
+  let start = inCurrent ? curStart : prevStart;
+  let n = 0;
+  for (let i = 0; i < 52; i++) {
+    if (!actions.some(d => d >= start && d <= addDays(start, 6))) break;
+    n++;
+    start = addDays(start, -7);
+  }
+  return n;
 }
 
-function mapProject(p: RawProject) {
-  return {
-    name: p.name, current: p.current, next: p.next ?? '',
-    stepLabel: 'Step ' + p.stepNo + ' of ' + p.total,
-    hasNext: !!p.next && p.stepNo < p.total,
-    boxStyle: {
-      width: '18px', height: '18px', borderRadius: '6px', display: 'flex' as const,
-      background: 'transparent', border: '1.5px solid #e3e6ee', flexShrink: 0, marginTop: '1px',
-    },
-    barStyle: {
-      height: '100%', background: ACCENT, borderRadius: '99px',
-      width: Math.round((p.stepNo / p.total) * 100) + '%',
-    },
-  };
+function streakLabel(task: RepeatedTask, streak: number): string {
+  if (streak === 0) return resetLabel(task);
+  return streak + (task.resetDay === 'daily' ? ' day streak' : ' week streak');
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-export default function HomeTab({ db: _db }: Props) {
-  const [domain, setDomain] = useState<Domain>('day');
+export default function HomeTab({ db }: Props) {
+  const [tasks,    setTasks]    = useState<PlainTask[]>([]);
+  const [repeated, setRepeated] = useState<RepeatedTask[]>([]);
+  const [projects, setProjects] = useState<MultiStepProject[]>([]);
+  const [domain,   setDomain]   = useState<Domain>('day');
 
-  const src = DATA[domain];
-  const allTasks   = src.tasks.map(t => mapTask(t));
-  const totalTasks = allTasks.length;
-  const doneTasks  = allTasks.filter(t => t.done).length;
-  const pinned     = allTasks.filter(t => t.starred);
-  const other      = allTasks.filter(t => !t.starred);
-  const habits     = src.habits.map(h => mapHabit(h));
-  const projects   = src.projects.map(p => mapProject(p));
+  const load = useCallback(() => Promise.all([
+    dbGetAll(db, 'task').then(setTasks),
+    dbGetAll(db, 'repeated').then(setRepeated),
+    dbGetAll(db, 'multistep').then(setProjects),
+  ]), [db]);
 
-  const habitsLogged = habits.filter(h => h.loggedToday).length;
+  useEffect(() => { load(); }, [load]);
+
+  const today = todayStr();
+  const dn    = domain === 'day' ? DayNight.DAY : DayNight.NIGHT;
+
+  // ── Tasks card data ─────────────────────────────────────────────────────────
+
+  // Plain tasks for this domain: incomplete + completed today
+  interface TaskItem {
+    key: string; title: string; done: boolean; starred: boolean; hasTag: boolean; tag: string; isProject: boolean;
+  }
+
+  const plainItems: TaskItem[] = tasks
+    .filter(t => (t.dayNight ?? DayNight.NIGHT) === dn && (t.completedAt === null || t.completedAt === today))
+    .map(t => ({
+      key: 'task-' + t.id,
+      title: t.title, done: t.completedAt !== null,
+      starred: t.starred, hasTag: false, tag: '', isProject: false,
+    }));
+
+  // Only show a project's current step (first incomplete overall) if it matches the domain.
+  // Never skip ahead to a later step just because its dayNight matches.
+  const activeProjects = projects.filter(p => !p.deferred);
+
+  const stepItems: TaskItem[] = activeProjects.flatMap(p => {
+    const step = p.steps.find(s => s.completedAt === null);
+    if (!step || (step.dayNight ?? DayNight.NIGHT) !== dn) return [];
+    const stepNo = p.steps.indexOf(step) + 1;
+    return [{
+      key: 'step-' + p.id + '-' + step.id,
+      title: step.title, done: false,
+      starred: step.starred, hasTag: true,
+      tag: p.title + ' · Step ' + stepNo + ' of ' + p.steps.length,
+      isProject: true,
+    }];
+  });
+
+  const allTaskItems = [...plainItems, ...stepItems];
+  const pinned = allTaskItems.filter(t => t.starred);
+  const other  = allTaskItems.filter(t => !t.starred);
+  const doneTasks  = allTaskItems.filter(t => t.done).length;
+  const totalTasks = allTaskItems.length;
+
+  // ── Habits card data ────────────────────────────────────────────────────────
+
+  const habits = repeated
+    .filter(t => (t.dayNight ?? DayNight.NIGHT) === dn)
+    .map(t => ({
+      id: t.id, title: t.title,
+      doneToday: !canLog(t),
+      streakLabel: streakLabel(t, computeStreak(t, today)),
+    }));
+
+  const habitsLogged = habits.filter(h => h.doneToday).length;
+
+  // ── Projects card data ──────────────────────────────────────────────────────
+
+  const mappedProjects = activeProjects.map(p => {
+    const completedCount = p.steps.filter(s => s.completedAt !== null).length;
+    const total = p.steps.length;
+    const incomplete = p.steps.filter(s => s.completedAt === null);
+    const currentStep = incomplete[0];
+    const nextStep    = incomplete[1];
+    const stepNo = Math.min(completedCount + 1, total);
+    return {
+      id: p.id, name: p.title,
+      stepLabel: 'Step ' + stepNo + ' of ' + total,
+      current: currentStep?.title ?? '(all steps done)',
+      currentStarred: currentStep?.starred ?? false,
+      next: nextStep?.title ?? '',
+      nextStarred: nextStep?.starred ?? false,
+      hasNext: !!nextStep,
+      barStyle: {
+        height: '100%', background: ACCENT, borderRadius: '99px',
+        width: Math.round((completedCount / Math.max(total, 1)) * 100) + '%',
+      },
+    };
+  });
+
+  // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div style={{ margin: '0 -16px', background: '#14161b', padding: '28px 28px 64px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", color: '#e3e6ee' }}>
@@ -170,70 +222,81 @@ export default function HomeTab({ db: _db }: Props) {
         <div style={{ flex: '2 1 430px', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '22px' }}>
 
           {/* Tasks card */}
-          <div style={{ background: '#1c1f27', border: '1px solid #2a2f3a', borderRadius: '16px', padding: '22px 22px 18px' }}>
+          <div data-testid="tasks-panel" style={{ background: '#1c1f27', border: '1px solid #2a2f3a', borderRadius: '16px', padding: '22px 22px 18px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '11px', letterSpacing: '.12em', color: '#7a818f', textTransform: 'uppercase' }}>Tasks</div>
-              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '11px', color: '#6f7686' }}>{doneTasks} of {totalTasks} completed</div>
+              <div style={{ fontFamily: MONO, fontSize: '11px', letterSpacing: '.12em', color: '#7a818f', textTransform: 'uppercase' }}>Tasks</div>
+              <div style={{ fontFamily: MONO, fontSize: '11px', color: '#6f7686' }}>
+                {totalTasks === 0 ? 'nothing here' : doneTasks + ' of ' + totalTasks + ' done'}
+              </div>
             </div>
 
-            <div style={{ maxHeight: '300px', overflowY: 'auto', margin: '0 -8px', padding: '0 8px' }}>
-              {/* Pinned group */}
-              {pinned.length > 0 && (
-                <div style={{ background: '#23201a', border: '1px solid #39331f', borderRadius: '12px', padding: '4px 14px 8px', marginBottom: '12px' }}>
-                  <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '10px', letterSpacing: '.12em', color: '#cf9f54', textTransform: 'uppercase', padding: '10px 0 2px' }}>★ Pinned · do first</div>
-                  {pinned.map((t, i) => (
-                    <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '11px 0' }}>
-                      <div style={t.boxStyle}>{t.done && '✓'}</div>
-                      <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                          <span style={{ color: '#d8a85a', fontSize: '13px', lineHeight: '1' }}>★</span>
-                          <span style={t.titleStyle}>{t.title}</span>
+            {totalTasks === 0 ? (
+              <div style={{ fontFamily: MONO, fontSize: '12px', color: '#4a5060', padding: '8px 0' }}>No tasks for this period</div>
+            ) : (
+              <div style={{ maxHeight: '300px', overflowY: 'auto', margin: '0 -8px', padding: '0 8px' }}>
+                {/* Pinned group */}
+                {pinned.length > 0 && (
+                  <div style={{ background: '#23201a', border: '1px solid #39331f', borderRadius: '12px', padding: '4px 14px 8px', marginBottom: '12px' }}>
+                    <div style={{ fontFamily: MONO, fontSize: '10px', letterSpacing: '.12em', color: '#cf9f54', textTransform: 'uppercase', padding: '10px 0 2px' }}>★ Pinned · do first</div>
+                    {pinned.map(t => (
+                      <div key={t.key} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '11px 0' }}>
+                        <div style={taskBoxStyle(t.done)}>{t.done && '✓'}</div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                            <span style={{ color: '#d8a85a', fontSize: '13px', lineHeight: '1' }}>★</span>
+                            <span style={taskTitleStyle(t.done)}>{t.title}</span>
+                          </div>
+                          {t.hasTag && (
+                            <div style={{ fontFamily: MONO, fontSize: '11px', color: '#7a818f', marginTop: '4px', paddingLeft: '20px' }}>{t.tag}</div>
+                          )}
                         </div>
-                        {t.hasTag && (
-                          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '11px', color: '#7a818f', marginTop: '4px', paddingLeft: '20px' }}>{t.tag}</div>
-                        )}
                       </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {/* Other tasks */}
-              {other.map((t, i) => (
-                <div key={i} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px 2px', borderTop: '1px solid #262b34' }}>
-                  <div style={t.boxStyle}>{t.done && '✓'}</div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <span style={t.titleStyle}>{t.title}</span>
-                    {t.hasTag && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
-                        {t.isProject && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#6f7da5', flexShrink: 0 }}></span>}
-                        <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '11px', color: '#7a818f' }}>{t.tag}</span>
-                      </div>
-                    )}
+                    ))}
                   </div>
-                </div>
-              ))}
-            </div>
+                )}
+
+                {/* Other tasks */}
+                {other.map(t => (
+                  <div key={t.key} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px 2px', borderTop: '1px solid #262b34' }}>
+                    <div style={taskBoxStyle(t.done)}>{t.done && '✓'}</div>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <span style={taskTitleStyle(t.done)}>{t.title}</span>
+                      {t.hasTag && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
+                          {t.isProject && <span style={{ width: '5px', height: '5px', borderRadius: '50%', background: '#6f7da5', flexShrink: 0 }}></span>}
+                          <span style={{ fontFamily: MONO, fontSize: '11px', color: '#7a818f' }}>{t.tag}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Habits card */}
-          <div style={{ background: '#1c1f27', border: '1px solid #2a2f3a', borderRadius: '16px', padding: '22px 22px 8px' }}>
+          <div data-testid="habits-panel" style={{ background: '#1c1f27', border: '1px solid #2a2f3a', borderRadius: '16px', padding: '22px 22px 8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '11px', letterSpacing: '.12em', color: '#7a818f', textTransform: 'uppercase' }}>Habits</div>
-              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '11px', color: '#6f7686' }}>{habitsLogged} of {habits.length} logged</div>
+              <div style={{ fontFamily: MONO, fontSize: '11px', letterSpacing: '.12em', color: '#7a818f', textTransform: 'uppercase' }}>Habits</div>
+              <div style={{ fontFamily: MONO, fontSize: '11px', color: '#6f7686' }}>
+                {habits.length === 0 ? 'none' : habitsLogged + ' of ' + habits.length + ' logged'}
+              </div>
             </div>
-            <div style={{ maxHeight: '400px', overflowY: 'auto', margin: '0 -8px', padding: '0 8px' }}>
-              {habits.map((h, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '11px 0', borderTop: '1px solid #262b34' }}>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '15px', color: '#dfe2ea', fontWeight: 500 }}>{h.title}</div>
-                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '11px', color: '#7a818f', marginTop: '3px' }}>{h.streakLabel}</div>
+            {habits.length === 0 ? (
+              <div style={{ fontFamily: MONO, fontSize: '12px', color: '#4a5060', padding: '8px 0 14px' }}>No habits for this period</div>
+            ) : (
+              <div style={{ maxHeight: '400px', overflowY: 'auto', margin: '0 -8px', padding: '0 8px' }}>
+                {habits.map(h => (
+                  <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '11px 0', borderTop: '1px solid #262b34' }}>
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <div style={{ fontSize: '15px', color: '#dfe2ea', fontWeight: 500 }}>{h.title}</div>
+                      <div style={{ fontFamily: MONO, fontSize: '11px', color: '#7a818f', marginTop: '3px' }}>{h.streakLabel}</div>
+                    </div>
+                    <div style={habitCircleStyle(h.doneToday)}>{h.doneToday && '✓'}</div>
                   </div>
-                  {h.isAvoid && <div style={h.pillStyle}>{h.pillText}</div>}
-                  {h.isBuild && <div style={h.circleStyle}>{h.doneToday && '✓'}</div>}
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
 
@@ -243,38 +306,46 @@ export default function HomeTab({ db: _db }: Props) {
           {/* Active Projects card */}
           <div style={{ background: '#1c1f27', border: '1px solid #2a2f3a', borderRadius: '16px', padding: '22px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '11px', letterSpacing: '.12em', color: '#7a818f', textTransform: 'uppercase' }}>Active projects</div>
-              <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '11px', color: '#6f7686' }}>{projects.length} / 2 active</div>
+              <div style={{ fontFamily: MONO, fontSize: '11px', letterSpacing: '.12em', color: '#7a818f', textTransform: 'uppercase' }}>Active projects</div>
+              <div style={{ fontFamily: MONO, fontSize: '11px', color: '#6f7686' }}>{mappedProjects.length} active</div>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
-              {projects.map((p, i) => (
-                <div key={i}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px' }}>
-                    <div style={{ fontSize: '15px', fontWeight: 600, color: '#e3e6ee' }}>{p.name}</div>
-                    <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '11px', color: '#7a818f', whiteSpace: 'nowrap' }}>{p.stepLabel}</div>
-                  </div>
-                  <div style={{ height: '5px', background: '#2a2f3a', borderRadius: '99px', overflow: 'hidden', margin: '10px 0 11px' }}>
-                    <div style={p.barStyle}></div>
-                  </div>
-                  <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', background: '#232833', borderRadius: '10px', padding: '10px 12px' }}>
-                    <div style={p.boxStyle}></div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '13.5px', color: '#e3e6ee', fontWeight: 500 }}>{p.current}</div>
-                      <div style={{ fontFamily: "'Space Mono', monospace", fontSize: '9px', color: '#6f7686', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: '3px' }}>Current step</div>
+
+            {mappedProjects.length === 0 ? (
+              <div style={{ fontFamily: MONO, fontSize: '12px', color: '#4a5060', padding: '8px 0' }}>No active projects</div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '18px' }}>
+                {mappedProjects.map(p => (
+                  <div key={p.id}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px' }}>
+                      <div style={{ fontSize: '15px', fontWeight: 600, color: '#e3e6ee' }}>{p.name}</div>
+                      <div style={{ fontFamily: MONO, fontSize: '11px', color: '#7a818f', whiteSpace: 'nowrap' }}>{p.stepLabel}</div>
                     </div>
-                  </div>
-                  {p.hasNext && (
-                    <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px', marginTop: '8px', paddingLeft: '2px' }}>
-                      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '9px', color: '#7a818f', textTransform: 'uppercase', letterSpacing: '.08em', flexShrink: 0 }}>On deck</span>
-                      <span style={{ fontSize: '12.5px', color: '#838ca2', minWidth: 0 }}>{p.next}</span>
+                    <div style={{ height: '5px', background: '#2a2f3a', borderRadius: '99px', overflow: 'hidden', margin: '10px 0 11px' }}>
+                      <div style={p.barStyle}></div>
                     </div>
-                  )}
-                </div>
-              ))}
-              <div style={{ border: '1px dashed #353b47', borderRadius: '11px', padding: '11px', textAlign: 'center', color: '#6f7686', fontFamily: "'Space Mono', monospace", fontSize: '11px', lineHeight: 1.5 }}>
-                Limit reached — finish one<br />to start another
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', background: '#232833', borderRadius: '10px', padding: '10px 12px' }}>
+                      <div style={{ width: '18px', height: '18px', borderRadius: '6px', background: 'transparent', border: '1.5px solid #e3e6ee', flexShrink: 0, marginTop: '1px' }}></div>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '13.5px', color: '#e3e6ee', fontWeight: 500 }}>
+                          {p.currentStarred && <span style={{ color: '#d8a85a', marginRight: '5px' }}>★</span>}
+                          {p.current}
+                        </div>
+                        <div style={{ fontFamily: MONO, fontSize: '9px', color: '#6f7686', textTransform: 'uppercase', letterSpacing: '.08em', marginTop: '3px' }}>Current step</div>
+                      </div>
+                    </div>
+                    {p.hasNext && (
+                      <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px', marginTop: '8px', paddingLeft: '2px' }}>
+                        <span style={{ fontFamily: MONO, fontSize: '9px', color: '#7a818f', textTransform: 'uppercase', letterSpacing: '.08em', flexShrink: 0 }}>On deck</span>
+                        <span style={{ fontSize: '12.5px', color: '#838ca2', minWidth: 0 }}>
+                          {p.nextStarred && <span style={{ color: '#d8a85a', marginRight: '4px' }}>★</span>}
+                          {p.next}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ))}
               </div>
-            </div>
+            )}
           </div>
         </div>
       </div>
