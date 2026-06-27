@@ -363,6 +363,12 @@ input[type='checkbox'] {
   max-width: 480px;
 }
 
+.modal-card-lg {
+  max-width: 640px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
 .modal-header {
   display: flex;
   align-items: center;
