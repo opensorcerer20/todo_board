@@ -58,14 +58,13 @@ async function injectLogs(
 }
 
 // Returns a locator for the streak label of a specific habit in the habits panel.
-// Structure: <title div> and <streak div> are siblings inside a text-container div.
-// We go: title element → parent (text container) → second child div (streak label).
+// Structure: <title div> and <streak span> are siblings inside a text-container div.
+// We go: title element → parent (text container) → the only span child (streak label).
 function streakLabelOf(habitsPanel: Locator, habitTitle: string): Locator {
   return habitsPanel
     .getByText(habitTitle, { exact: true })
-    .locator('..')          // text container (parent of title + streak divs)
-    .locator('div')         // both title and streak divs, in document order
-    .nth(1);                // nth(1) = streak label (nth(0) = title)
+    .locator('..')          // text container (parent of title div + streak span)
+    .locator('span');       // streak label is the only span child
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import { dbGetAll } from '../db';
 import { canLog, resetLabel, todayStr } from '../utils';
-import { DayNight } from '../types';
+import { DayNight, DayNightLabel } from '../types';
 import type { MultiStepProject, PlainTask, RepeatedTask } from '../types';
 
 interface Props { db: IDBDatabase }
 
 type Domain = 'day' | 'night';
-
-const ACCENT = '#7d8cc4';
 
 // ── Style helpers ─────────────────────────────────────────────────────────────
 
@@ -17,8 +15,8 @@ function domainBtnStyle(active: boolean) {
     border: 'none', cursor: 'pointer', fontFamily: "'Space Mono', monospace",
     fontSize: '13px', fontWeight: 600, padding: '7px 17px', borderRadius: '8px',
     transition: 'all .15s ease',
-    background: active ? '#2e333d' : 'transparent',
-    color: active ? '#eef0f5' : '#828a9c',
+    background: active ? 'var(--surface-2)' : 'transparent',
+    color: active ? 'var(--text)' : 'var(--text-muted)',
     boxShadow: active ? '0 1px 2px rgba(0,0,0,0.35)' : 'none',
   } as const;
 }
@@ -36,20 +34,20 @@ const CIRCLE_BASE = {
 
 function taskBoxStyle(done: boolean) {
   return done
-    ? { ...BOX_BASE, background: ACCENT, border: '1.5px solid ' + ACCENT, color: '#fff' }
-    : { ...BOX_BASE, background: 'transparent', border: '1.5px solid #e3e6ee', color: 'transparent' };
+    ? { ...BOX_BASE, background: 'var(--primary)', border: '1.5px solid var(--primary)', color: '#fff' }
+    : { ...BOX_BASE, background: 'transparent', border: '1.5px solid var(--checkbox-border)', color: 'transparent' };
 }
 
 function taskTitleStyle(done: boolean) {
   return done
-    ? { fontSize: '15px', fontWeight: 500, color: '#6a7080', textDecoration: 'line-through' as const }
-    : { fontSize: '15px', fontWeight: 500, color: '#e3e6ee' };
+    ? { fontSize: '15px', fontWeight: 500, color: 'var(--text-muted)', textDecoration: 'line-through' as const }
+    : { fontSize: '15px', fontWeight: 500, color: 'var(--text)' };
 }
 
 function habitCircleStyle(done: boolean) {
   return done
-    ? { ...CIRCLE_BASE, background: '#5f8f74', color: '#fff', border: '1px solid #5f8f74' }
-    : { ...CIRCLE_BASE, background: 'transparent', color: '#e3e6ee', border: '1.5px solid #e3e6ee' };
+    ? { ...CIRCLE_BASE, background: 'var(--success)', color: '#fff', border: '1px solid var(--success)' }
+    : { ...CIRCLE_BASE, background: 'transparent', color: 'var(--text-muted)', border: '1.5px solid var(--border)' };
 }
 
 const MONO = "'Space Mono', monospace";
@@ -200,7 +198,7 @@ export default function HomeTab({ db }: Props) {
       nextStarred: nextStep?.starred ?? false,
       hasNext: !!nextStep,
       barStyle: {
-        height: '100%', background: ACCENT, borderRadius: '99px',
+        height: '100%', background: 'var(--primary)', borderRadius: '99px',
         width: (completedCount === 0 ? 1 : Math.round((completedCount / Math.max(total, 1)) * 100)) + '%',
       },
     };
@@ -209,12 +207,12 @@ export default function HomeTab({ db }: Props) {
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
-    <div style={{ margin: '0 -16px', background: '#14161b', padding: '28px 28px 64px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", color: '#e3e6ee' }}>
+    <div style={{ margin: '0 -16px', background: 'var(--bg)', padding: '28px 28px 64px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", color: 'var(--text)' }}>
 
       {/* Day / Night toggle */}
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '22px', background: '#1c1f27', borderRadius: '10px', padding: '4px', width: 'fit-content' }}>
-        <button style={domainBtnStyle(domain === 'day')}   onClick={() => setDomain('day')}>☀️ Day</button>
-        <button style={domainBtnStyle(domain === 'night')} onClick={() => setDomain('night')}>🌙 Night</button>
+      <div style={{ display: 'flex', gap: '4px', marginBottom: '22px', background: 'var(--surface)', borderRadius: '10px', padding: '4px', width: 'fit-content' }}>
+        <button style={domainBtnStyle(domain === 'day')}   onClick={() => setDomain('day')}>{DayNightLabel.DAY}</button>
+        <button style={domainBtnStyle(domain === 'night')} onClick={() => setDomain('night')}>{DayNightLabel.NIGHT}</button>
       </div>
 
       {/* Board */}
@@ -224,28 +222,28 @@ export default function HomeTab({ db }: Props) {
         <div style={{ flex: '2 1 430px', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '22px' }}>
 
           {/* Tasks card */}
-          <div data-testid="tasks-panel" style={{ background: '#1c1f27', border: '1px solid #2a2f3a', borderRadius: '16px', padding: '22px 22px 18px' }}>
+          <div data-testid="tasks-panel" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '22px 22px 18px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <div style={{ fontFamily: MONO, fontSize: '11px', letterSpacing: '.12em', color: '#7a818f', textTransform: 'uppercase' }}>Tasks</div>
-              <div style={{ fontFamily: MONO, fontSize: '11px', color: '#6f7686' }}>
+              <div style={{ fontFamily: MONO, fontSize: '11px', letterSpacing: '.12em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Tasks</div>
+              <div style={{ fontFamily: MONO, fontSize: '11px', color: 'var(--text-dim)' }}>
                 {totalTasks === 0 ? 'nothing here' : doneTasks + ' of ' + totalTasks + ' done'}
               </div>
             </div>
 
             {totalTasks === 0 ? (
-              <div style={{ fontFamily: MONO, fontSize: '12px', color: '#4a5060', padding: '8px 0' }}>No tasks for this period</div>
+              <div style={{ fontFamily: MONO, fontSize: '12px', color: 'var(--text-dim)', padding: '8px 0' }}>No tasks for this period</div>
             ) : (
               <div style={{ maxHeight: '300px', overflowY: 'auto', margin: '0 -8px', padding: '0 8px' }}>
                 {/* Pinned group */}
                 {pinned.length > 0 && (
-                  <div style={{ background: '#23201a', border: '1px solid #39331f', borderRadius: '12px', padding: '4px 14px 8px', marginBottom: '12px' }}>
-                    <div style={{ fontFamily: MONO, fontSize: '10px', letterSpacing: '.12em', color: '#cf9f54', textTransform: 'uppercase', padding: '10px 0 2px' }}>★ Pinned · do first</div>
+                  <div style={{ background: 'var(--pinned-bg)', border: '1px solid var(--pinned-border)', borderRadius: '12px', padding: '4px 14px 8px', marginBottom: '12px' }}>
+                    <div style={{ fontFamily: MONO, fontSize: '10px', letterSpacing: '.12em', color: 'var(--pinned-label)', textTransform: 'uppercase', padding: '10px 0 2px' }}>★ Pinned · do first</div>
                     {pinned.map(t => (
                       <div key={t.key} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '11px 0' }}>
                         <div style={taskBoxStyle(t.done)}>{t.done && '✓'}</div>
                         <div style={{ flex: 1, minWidth: 0 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                            <span style={{ color: '#d8a85a', fontSize: '13px', lineHeight: '1' }}>★</span>
+                            <span style={{ color: 'var(--warning)', fontSize: '13px', lineHeight: '1' }}>★</span>
                             <span style={taskTitleStyle(t.done)}>{t.title}</span>
                           </div>
                           {t.isProject && (
@@ -262,7 +260,7 @@ export default function HomeTab({ db }: Props) {
 
                 {/* Other tasks */}
                 {other.map(t => (
-                  <div key={t.key} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px 2px', borderTop: '1px solid #262b34' }}>
+                  <div key={t.key} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px 2px', borderTop: '1px solid var(--border)' }}>
                     <div style={taskBoxStyle(t.done)}>{t.done && '✓'}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <span style={taskTitleStyle(t.done)}>{t.title}</span>
@@ -280,21 +278,21 @@ export default function HomeTab({ db }: Props) {
           </div>
 
           {/* Habits card */}
-          <div data-testid="habits-panel" style={{ background: '#1c1f27', border: '1px solid #2a2f3a', borderRadius: '16px', padding: '22px 22px 8px' }}>
+          <div data-testid="habits-panel" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '22px 22px 8px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <div style={{ fontFamily: MONO, fontSize: '11px', letterSpacing: '.12em', color: '#7a818f', textTransform: 'uppercase' }}>Habits</div>
-              <div style={{ fontFamily: MONO, fontSize: '11px', color: '#6f7686' }}>
+              <div style={{ fontFamily: MONO, fontSize: '11px', letterSpacing: '.12em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Habits</div>
+              <div style={{ fontFamily: MONO, fontSize: '11px', color: 'var(--text-dim)' }}>
                 {habits.length === 0 ? 'none' : habitsLogged + ' of ' + habits.length + ' logged'}
               </div>
             </div>
             {habits.length === 0 ? (
-              <div style={{ fontFamily: MONO, fontSize: '12px', color: '#4a5060', padding: '8px 0 14px' }}>No habits for this period</div>
+              <div style={{ fontFamily: MONO, fontSize: '12px', color: 'var(--text-dim)', padding: '8px 0 14px' }}>No habits for this period</div>
             ) : (
               <div style={{ maxHeight: '400px', overflowY: 'auto', margin: '0 -8px', padding: '0 8px' }}>
                 {habits.map(h => (
-                  <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '11px 0', borderTop: '1px solid #262b34' }}>
+                  <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '11px 0', borderTop: '1px solid var(--border)' }}>
                     <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '15px', color: '#dfe2ea', fontWeight: 500 }}>{h.title}</div>
+                      <div style={{ fontSize: '15px', color: 'var(--text)', fontWeight: 500 }}>{h.title}</div>
                       <span style={{ display: 'inline-block', marginTop: '5px', fontFamily: MONO, fontSize: '10px', color: '#7fb295', border: '1px solid rgba(95,143,116,0.3)', borderRadius: '99px', padding: '2px 8px', whiteSpace: 'nowrap', background: 'rgba(95,143,116,0.12)' }}>{h.streakLabel}</span>
                     </div>
                     <div style={habitCircleStyle(h.doneToday)}>{h.doneToday && '✓'}</div>
@@ -309,30 +307,30 @@ export default function HomeTab({ db }: Props) {
         <div style={{ flex: '1 1 290px', minWidth: '260px', display: 'flex', flexDirection: 'column', gap: '22px' }}>
 
           {/* Active Projects card */}
-          <div style={{ background: '#1c1f27', border: '1px solid #2a2f3a', borderRadius: '16px', padding: '22px' }}>
+          <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '22px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-              <div style={{ fontFamily: MONO, fontSize: '11px', letterSpacing: '.12em', color: '#7a818f', textTransform: 'uppercase' }}>Active projects</div>
-              <div style={{ fontFamily: MONO, fontSize: '11px', color: '#6f7686' }}>{mappedProjects.length} active</div>
+              <div style={{ fontFamily: MONO, fontSize: '11px', letterSpacing: '.12em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Active projects</div>
+              <div style={{ fontFamily: MONO, fontSize: '11px', color: 'var(--text-dim)' }}>{mappedProjects.length} active</div>
             </div>
 
             {mappedProjects.length === 0 ? (
-              <div style={{ fontFamily: MONO, fontSize: '12px', color: '#4a5060', padding: '8px 0' }}>No active projects</div>
+              <div style={{ fontFamily: MONO, fontSize: '12px', color: 'var(--text-dim)', padding: '8px 0' }}>No active projects</div>
             ) : (
               <div style={{ display: 'flex', flexDirection: 'column' }}>
                 {mappedProjects.map((p, i) => (
-                  <div key={p.id} style={i > 0 ? { borderTop: '1px solid #2a2f3a', marginTop: '18px', paddingTop: '18px' } : {}}>
+                  <div key={p.id} style={i > 0 ? { borderTop: '1px solid var(--border)', marginTop: '18px', paddingTop: '18px' } : {}}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '10px' }}>
-                      <div style={{ fontSize: '15px', fontWeight: 600, color: '#e3e6ee' }}>{p.name}</div>
-                      <div style={{ fontFamily: MONO, fontSize: '11px', color: '#7a818f', whiteSpace: 'nowrap' }}>{p.stepLabel}</div>
+                      <div style={{ fontSize: '15px', fontWeight: 600, color: 'var(--text)' }}>{p.name}</div>
+                      <div style={{ fontFamily: MONO, fontSize: '11px', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{p.stepLabel}</div>
                     </div>
-                    <div style={{ height: '5px', background: '#2a2f3a', borderRadius: '99px', overflow: 'hidden', margin: '10px 0 11px' }}>
+                    <div style={{ height: '5px', background: 'var(--border)', borderRadius: '99px', overflow: 'hidden', margin: '10px 0 11px' }}>
                       <div style={p.barStyle}></div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', background: '#232833', borderRadius: '10px', padding: '10px 12px' }}>
-                      <div style={{ width: '18px', height: '18px', borderRadius: '6px', background: 'transparent', border: '1.5px solid #e3e6ee', flexShrink: 0, marginTop: '1px' }}></div>
+                    <div style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', background: 'var(--surface-2)', borderRadius: '10px', padding: '10px 12px' }}>
+                      <div style={{ width: '18px', height: '18px', borderRadius: '6px', background: 'transparent', border: '1.5px solid var(--checkbox-border)', flexShrink: 0, marginTop: '1px' }}></div>
                       <div style={{ flex: 1, minWidth: 0 }}>
-                        <div style={{ fontSize: '13.5px', color: '#e3e6ee', fontWeight: 500 }}>
-                          {p.currentStarred && <span style={{ color: '#d8a85a', marginRight: '5px' }}>★</span>}
+                        <div style={{ fontSize: '13.5px', color: 'var(--text)', fontWeight: 500 }}>
+                          {p.currentStarred && <span style={{ color: 'var(--warning)', marginRight: '5px' }}>★</span>}
                           {p.current}
                         </div>
                       </div>
@@ -340,8 +338,8 @@ export default function HomeTab({ db }: Props) {
                     {p.hasNext && (
                       <div style={{ display: 'flex', alignItems: 'baseline', gap: '7px', marginTop: '8px', paddingLeft: '2px' }}>
                         <span style={{ fontFamily: MONO, fontSize: '9px', color: '#8fa5d0', border: '1px solid rgba(111,125,165,0.3)', borderRadius: '99px', padding: '2px 8px', letterSpacing: '.06em', textTransform: 'uppercase', background: 'rgba(111,125,165,0.12)', flexShrink: 0 }}>On deck</span>
-                        <span style={{ fontSize: '12.5px', color: '#838ca2', minWidth: 0 }}>
-                          {p.nextStarred && <span style={{ color: '#d8a85a', marginRight: '4px' }}>★</span>}
+                        <span style={{ fontSize: '12.5px', color: 'var(--text-muted)', minWidth: 0 }}>
+                          {p.nextStarred && <span style={{ color: 'var(--warning)', marginRight: '4px' }}>★</span>}
                           {p.next}
                         </span>
                       </div>

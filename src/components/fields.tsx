@@ -1,4 +1,4 @@
-import { DayNight } from '../types';
+import { DayNight, DayNightLabel } from '../types';
 import { DAY_NAMES } from '../utils';
 
 export type DayNightValue = typeof DayNight[keyof typeof DayNight];
@@ -57,7 +57,7 @@ export function DayNightSelect({ value, onChange, compact }: {
     >
       {compact
         ? <><option value="day">☀️</option><option value="night">🌙</option></>
-        : <><option value="day">☀️ Day</option><option value="night">🌙 Night</option></>}
+        : <><option value="day">{DayNightLabel.DAY}</option><option value="night">{DayNightLabel.NIGHT}</option></>}
     </select>
   );
   if (compact) return select;

@@ -12,7 +12,7 @@ import {
   dbPut,
 } from '../db';
 import type { PlainTask } from '../types';
-import { DayNight } from '../types';
+import { DayNight, DayNightLabel } from '../types';
 import {
   DayNightSelect,
   StarToggle,
@@ -141,7 +141,7 @@ export default function TasksTab({ db }: Props) {
 function TaskMeta({ starred, dayNight }: { starred: boolean; dayNight: typeof DayNight[keyof typeof DayNight] }) {
   return (
     <div className="task-meta-row">
-      <span className="badge badge-gray">{dayNight === DayNight.NIGHT ? '🌙 Night' : '☀️ Day'}</span>
+      <span className="badge badge-gray">{dayNight === DayNight.NIGHT ? DayNightLabel.NIGHT : DayNightLabel.DAY}</span>
       {starred && <span className="badge badge-amber">★ Starred</span>}
     </div>
   );

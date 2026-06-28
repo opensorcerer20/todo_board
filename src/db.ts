@@ -87,6 +87,14 @@ export function migrateDB(db: IDBDatabase): Promise<void> {
   });
 }
 
+export function dbExportAll(db: IDBDatabase): Promise<AnyTask[]> {
+  return new Promise((res, rej) => {
+    const req = db.transaction('tasks', 'readonly').objectStore('tasks').getAll();
+    req.onsuccess = () => res(req.result as AnyTask[]);
+    req.onerror = () => rej(req.error);
+  });
+}
+
 export function dbDelete(db: IDBDatabase, id: number): Promise<void> {
   return new Promise((res, rej) => {
     const req = db.transaction('tasks', 'readwrite').objectStore('tasks').delete(id);

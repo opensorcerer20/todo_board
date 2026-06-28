@@ -14,7 +14,7 @@ A personal task management app built with Preact, TypeScript, Vite, and IndexedD
 
 Once logged, the task locks until the next reset cycle. Each log is stored with both the action date (when you clicked Log) and the recorded date (today or yesterday).
 
-**Multistep Tasks** are projects made up of ordered steps, where each step is itself a task with a title and completion date. Steps can be reordered in the creation form. A progress bar tracks how many steps are done.
+**Multistep Tasks** are projects made up of ordered steps, where each step is itself a task with a title and completion date. Steps can be reordered in the creation form. A progress bar tracks how many steps are done. Active projects and deferred projects are shown in separate columns.
 
 ### Task metadata
 
@@ -22,20 +22,27 @@ Every task type supports a set of optional metadata fields:
 
 | Field | Applies to | Description |
 |---|---|---|
-| **Starred** `★` | Tasks, Repeat Tasks, Multistep steps | Marks high-priority items. Starred tasks sort to the top of every Home tab section and show a gold star icon. |
-| **Day / Night** | Tasks, Repeat Tasks, Multistep steps | Tags a task as a daytime or nighttime item. Shown as a `☀️ Day` or `🌙 Night` badge on the task card. Defaults to Night. |
-| **Deferred** | Multistep projects | Hides the entire project from the Home tab until un-deferred. Shown as a `⏸ Deferred` badge on the project card. |
+| **Starred** `★` | Tasks, Repeat Tasks, Multistep steps | Marks high-priority items. Starred tasks sort to the top of the Home tab tasks section and show in a dedicated pinned group. |
+| **Work/Errand · Personal** | Tasks, Repeat Tasks, Multistep steps | Tags a task to a time-of-day domain. Shown as a `☀️ Work/Errand` or `🌙 Personal` badge on the task card. Defaults to Personal. |
+| **Deferred** | Multistep projects | Moves the project to the Deferred column and hides it from the Home tab. Shown as a `⏸ Deferred` badge inline with the project title. |
 
 ### Home tab
 
-The Home tab is a read-only daily dashboard that surfaces:
-- All one-time tasks (incomplete, or completed today — crossed out)
-- All repeat tasks with their current log status
-- The **first unchecked step** from each multistep project (the next thing to do)
+The Home tab is a read-only daily dashboard with a domain toggle (Work/Errand · Personal) that filters everything on the page. It surfaces:
 
-Tasks completed on a previous day are excluded entirely from the Home view. Deferred multistep projects are excluded regardless of completion state.
+- **Tasks** — incomplete one-time tasks for the active domain, plus any completed today (shown crossed out). Starred tasks appear in a `★ Pinned · do first` group above the rest.
+- **Habits** — all repeat tasks for the active domain, with a streak counter (`N day streak` / `N week streak`) below each habit name.
+- **Active Projects** — all non-deferred multistep projects with a progress bar and the current step highlighted.
 
-Starred items float to the top of each section and display a `★` icon.
+Starred items float to the top of the Tasks section. Deferred multistep projects are excluded from all Home tab panels regardless of domain.
+
+### Data export
+
+The header contains an **Export JSON** button that downloads all IndexedDB records as a dated JSON file (`task-board-export-YYYY-MM-DD.json`), suitable for backup or migration.
+
+### Light / Dark mode
+
+A toggle in the header switches between light mode (the standard tab UI) and dark mode (derived from the Home tab's palette). The preference is persisted in `localStorage`.
 
 ## Tech stack
 
@@ -55,13 +62,15 @@ All task-like things share a `SimpleTask` base (`id`, `type`, `title`, `complete
 SimpleTask
 ├── PlainTask          (type: 'task',      id: number,      + starred, dayNight)
 ├── MultistepTask      (type: 'task',      id: string UUID, + starred, dayNight, deferred) ← embedded steps only
-├── RepeatedTask       (type: 'repeated',  id: number,      + starred, dayNight)
+├── RepeatedTask       (type: 'repeated',  id: number,      + starred, dayNight, logMode, logs)
 └── MultiStepProject   (type: 'multistep', id: number,      + deferred, steps: MultistepTask[])
 ```
 
 `MultiStepProject` has no `starred` or `dayNight` — those belong to its individual steps.
 
 `completedAt` is `string | null` (YYYY-MM-DD) rather than a boolean so the exact completion date is always known.
+
+`DayNightLabel` in `src/types.ts` is the single source of truth for the display labels (`☀️ Work/Errand` / `🌙 Personal`). All components import from there — changing a label is a one-line edit.
 
 ## Development
 
@@ -70,7 +79,7 @@ npm install
 npm run dev        # start dev server at localhost:5173
 npm run build      # production build
 npm run typecheck  # tsc --noEmit
-npm test           # run Playwright tests
+npm test           # run Playwright tests (33 tests)
 npm run test:ui    # Playwright interactive UI
 ```
 
@@ -80,48 +89,45 @@ All tests are Playwright end-to-end tests running against a real Chromium browse
 
 **Each test gets a fresh browser context**, which means a fresh IndexedDB with no pre-existing data. There is no explicit setup or teardown to clear state between tests.
 
-### Task CRUD tests (`tests/tasks.spec.ts`)
+### Task CRUD tests (`tests/tasks.spec.ts`) — 4 tests
 
 Focused tests for the Tasks tab: add a task, delete it, complete it, uncomplete it. These act as the functional unit tests for the core data path (form → IndexedDB → re-render).
 
-### Metadata tests (`tests/metadata.spec.ts`)
+### Edit modal tests (`tests/editing.spec.ts`) — 12 tests
 
-Covers the starred, day/night, and deferred features across all three task types:
+Covers the edit modal for all three task types:
 
-- **Starred**: star icon appears on the Home tab; starred items sort above non-starred in all three Home sections (tasks, repeat tasks, next steps).
-- **Day/Night**: the correct `☀️ Day` or `🌙 Night` badge appears on task cards after creation; covers Tasks, Repeat Tasks, and Multistep step cards. Full emoji text is matched rather than bare words because Playwright's `hasText` is case-insensitive and `'Day'` would also match the `📅 Logs today` badge.
-- **Deferred**: a deferred multistep project is absent from the Home tab; a non-deferred one is present.
+- **Tasks**: edit title, toggle star, change domain (Work/Errand ↔ Personal), cancel and escape both discard changes without saving.
+- **Repeat Tasks**: edit title, change reset schedule (e.g. Daily → Monday), change domain.
+- **Multistep projects**: edit project title, edit a step title, add a step, defer a project via the modal.
 
-### Home tab display tests (`tests/home.spec.ts`)
+### Metadata tests (`tests/metadata.spec.ts`) — 10 tests
 
-These verify the Home tab's filtering and display rules. Most are straightforward: add data in another tab, navigate to Home, assert what's visible.
+Covers starred, domain badge, and deferred features across task types:
 
-**The tricky case — "task completed yesterday is absent"** — requires controlling what the app considers "today". The app derives the current date at runtime via `new Date()`, so a task completed yesterday will have `completedAt` set to yesterday's date string, and the Home tab should exclude it.
+- **Starred on Home tab**: a starred Work/Errand task appears in the `★ Pinned · do first` section; starred tasks appear before non-starred in that section; a starred multistep step also surfaces in the pinned group.
+- **Domain badges**: `☀️ Work/Errand` and `🌙 Personal` badges render correctly on Tasks, Repeat Tasks, and Multistep step cards after creation.
+- **Multistep step badge**: the `☀️` emoji badge on a step card reflects the domain selected at creation time.
+- **Deferred**: a deferred multistep project (with a Work/Errand step, to rule out domain mismatch as the cause) is absent from all Home tab panels; a non-deferred project's name appears in the Active Projects card.
 
-Playwright's `page.clock` API is used to control the browser's clock:
+### Home tab display tests (`tests/home.spec.ts`) — 1 test
 
-```ts
-// 1. Start with the clock set to yesterday
-await page.clock.install({ time: new Date('2026-06-23T12:00:00') });
-await page.reload();
+Regression test for the domain-step interaction: when a project has an incomplete Work/Errand step followed by an incomplete Personal step, switching to Personal mode must not surface the Personal step while the Work/Errand step is still pending. Only the current step (first incomplete overall) surfaces, and only when its domain matches the active view.
 
-// 2. Add and complete the task — completedAt is recorded as '2026-06-23'
-await addTask(page, 'Done yesterday');
-await page.locator('.task-card', { hasText: 'Done yesterday' })
-  .locator('input[type="checkbox"]').click();
+### Streak tests (`tests/streak.spec.ts`) — 6 tests
 
-// 3. Advance the clock to today and reload so the app re-evaluates the date
-await page.clock.setFixedTime(new Date('2026-06-24T12:00:00'));
-await page.reload();
+Covers the daily streak calculation for both log modes. Logs are injected directly into IndexedDB via `page.evaluate()` to avoid clicking the Log button repeatedly.
 
-// 4. The Home tab should now exclude the task
-await goToTab(page, 'Home');
-await expect(page.locator('.task-title', { hasText: 'Done yesterday' })).not.toBeVisible();
-```
+| Scenario | logMode: today | logMode: yesterday |
+|---|---|---|
+| Active streak | Last log is today → shows count | Last action is today (records yesterday) → shows count |
+| Grace period | Last log is yesterday (not yet today) → streak still alive | Last action is yesterday (not yet today) → streak still alive |
+| Broken streak | Last log is 2+ days ago → shows reset label (e.g. "Daily") | Last action is 2+ days ago → shows reset label |
 
-The reload after advancing the clock is necessary because the app reads `new Date()` during component render, not reactively. Without it, the cached in-memory state would still reflect yesterday's date evaluation.
+The `logMode: 'yesterday'` tests verify the anchor shift: a task configured to log yesterday's date has a one-day offset applied to the streak window, so "logged yesterday" maps to "recorded two days ago" and still counts as an active streak.
 
 ## Todo
-- edit tasks
-- export button
+[x] edit tasks
+[x] export button
 - checkboxes on home tab
+[x] multistep: show deferred on right side minimized but still editable
