@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { dbGetAll, dbAdd, dbPut, dbDelete } from '../db';
 import { canLog, resetLabel, todayStr, yesterdayStr, makeTask } from '../utils';
-import { DayNight } from '../types';
+import { DayNight, DayNightLabel } from '../types';
 import type { RepeatedTask } from '../types';
 import {
   DayNightSelect,
@@ -120,7 +120,7 @@ export default function RepeatedTasksTab({ db }: Props) {
                 <span className="badge badge-gray">
                   {task.logMode === 'yesterday' ? '📅 Logs yesterday' : '📅 Logs today'}
                 </span>
-                <span className="badge badge-gray">{task.dayNight === DayNight.NIGHT ? '🌙 Night' : '☀️ Day'}</span>
+                <span className="badge badge-gray">{task.dayNight === DayNight.NIGHT ? DayNightLabel.NIGHT : DayNightLabel.DAY}</span>
                 {task.starred && <span className="badge badge-amber">★ Starred</span>}
                 {logCount > 0 && (
                   <span className={`badge ${eligible ? 'badge-gray' : 'badge-green'}`}>

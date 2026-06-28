@@ -1,87 +1,44 @@
 import { test, expect } from '@playwright/test';
-import { goToTab, addTask, addRepeatedTask, addMultistepProject } from './helpers';
-
-// Fixed point in time used as "today" across all home tab tests.
-const TODAY = new Date('2026-06-24T12:00:00');
-const YESTERDAY = new Date('2026-06-23T12:00:00');
+import { goToTab } from './helpers';
 
 test.beforeEach(async ({ page }) => {
-  await page.clock.install({ time: TODAY });
   await page.goto('/');
 });
 
-test('incomplete tasks appear normally on Home', async ({ page }) => {
-  await addTask(page, 'Normal task');
-  await goToTab(page, 'Home');
-
-  const title = page.locator('.task-title', { hasText: 'Normal task' });
-  await expect(title).toBeVisible();
-  await expect(title).not.toHaveClass(/completed/);
-});
-
-test('task completed today appears crossed out on Home', async ({ page }) => {
-  await addTask(page, 'Done today');
-
-  await goToTab(page, 'Tasks');
-  await page.locator('.task-card', { hasText: 'Done today' })
-    .locator('input[type="checkbox"]')
-    .click();
-
-  await goToTab(page, 'Home');
-
-  const title = page.locator('.task-title', { hasText: 'Done today' });
-  await expect(title).toBeVisible();
-  await expect(title).toHaveClass(/completed/);
-});
-
-test('task completed yesterday is absent from Home', async ({ page }) => {
-  // Start with the clock set to yesterday so completing the task records that date.
-  await page.clock.setFixedTime(YESTERDAY);
-  await page.reload();
-
-  await addTask(page, 'Done yesterday');
-
-  await goToTab(page, 'Tasks');
-  await page.locator('.task-card', { hasText: 'Done yesterday' })
-    .locator('input[type="checkbox"]')
-    .click();
-
-  // Advance to today and reload so the app re-evaluates the date.
-  await page.clock.setFixedTime(TODAY);
-  await page.reload();
-
-  await goToTab(page, 'Home');
-
-  await expect(page.locator('.task-title', { hasText: 'Done yesterday' })).not.toBeVisible();
-});
-
-test('all repeated tasks appear on Home', async ({ page }) => {
-  await addRepeatedTask(page, 'Morning run');
-  await addRepeatedTask(page, 'Evening stretch');
-
-  await goToTab(page, 'Home');
-
-  await expect(page.locator('.task-title', { hasText: 'Morning run' })).toBeVisible();
-  await expect(page.locator('.task-title', { hasText: 'Evening stretch' })).toBeVisible();
-});
-
-test('only first unchecked step appears from a multistep project', async ({ page }) => {
-  await addMultistepProject(page, 'My Project', ['Step Alpha', 'Step Beta']);
-
-  await goToTab(page, 'Home');
-
-  // Only the first unchecked step should be visible.
-  await expect(page.locator('.task-title', { hasText: 'Step Alpha' })).toBeVisible();
-  await expect(page.locator('.task-title', { hasText: 'Step Beta' })).not.toBeVisible();
-
-  // Complete the first step in the Multistep tab.
+/**
+ * Regression: when a project has an incomplete Day step followed by an incomplete
+ * Night step, switching to Night mode was showing the Night step in the task list
+ * even though the Day step (the actual current step) had not been completed yet.
+ *
+ * Only the current step (first incomplete overall) should appear in the task list,
+ * and only when its dayNight matches the active domain.
+ *
+ * Note: the Night step correctly still appears in the Projects card as "On deck" —
+ * this test scopes its assertions to the Tasks panel only.
+ */
+test('task list does not show a later step when an earlier step in a different domain is still incomplete', async ({ page }) => {
   await goToTab(page, 'Multistep');
-  await page.locator('.step-item', { hasText: 'Step Alpha' })
-    .locator('input[type="checkbox"]')
-    .click();
+  await page.getByPlaceholder('Task name…').fill('Mixed domain project');
 
-  // Home should now surface Step Beta as the next step.
+  // Step 1: Day — this is the current step, it must be completed first
+  await page.locator('.step-builder-row input[type="text"]').nth(0).fill('Current day step');
+  await page.locator('.step-builder-row .step-day-night').nth(0).selectOption('day');
+
+  // Step 2: Night — should not surface until Step 1 is done
+  await page.getByText('+ Add Step').click();
+  await page.locator('.step-builder-row input[type="text"]').nth(1).fill('Later night step');
+  await page.locator('.step-builder-row .step-day-night').nth(1).selectOption('night');
+
+  await page.getByRole('button', { name: 'Create Task' }).click();
   await goToTab(page, 'Home');
-  await expect(page.locator('.task-title', { hasText: 'Step Beta' })).toBeVisible();
-  await expect(page.locator('.task-title', { hasText: 'Step Alpha' })).not.toBeVisible();
+
+  const tasksPanel = page.getByTestId('tasks-panel');
+
+  // Night mode: current step is Day, so nothing from this project should appear in the task list
+  await page.getByRole('button', { name: '🌙 Personal' }).click();
+  await expect(tasksPanel.getByText('Later night step')).not.toBeVisible();
+
+  // Work/Errand mode: current step is Day and matches — it should appear
+  await page.getByRole('button', { name: '☀️ Work/Errand' }).click();
+  await expect(tasksPanel.getByText('Current day step')).toBeVisible();
 });

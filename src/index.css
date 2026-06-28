@@ -1,11 +1,15 @@
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&family=Space+Mono:wght@400;700&display=swap');
+
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
 :root {
   --bg: #f0f2f5;
   --surface: #ffffff;
+  --surface-2: #f8fafc;
   --border: #e2e8f0;
   --text: #1a202c;
   --text-muted: #718096;
+  --text-dim: #a0aec0;
   --primary: #4f46e5;
   --primary-light: #e0e7ff;
   --primary-hover: #4338ca;
@@ -19,6 +23,36 @@
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
   --radius: 10px;
   --radius-sm: 6px;
+  --pinned-bg: #fef9ee;
+  --pinned-border: #f0d79a;
+  --pinned-label: #b45309;
+  --checkbox-border: #6b7a90;
+}
+
+[data-theme="dark"] {
+  --bg: #14161b;
+  --surface: #1c1f27;
+  --surface-2: #232833;
+  --border: #2a2f3a;
+  --text: #e3e6ee;
+  --text-muted: #7a818f;
+  --text-dim: #6f7686;
+  --primary: #7d8cc4;
+  --primary-light: rgba(111, 125, 165, 0.12);
+  --primary-hover: #8fa5d0;
+  --success: #5f8f74;
+  --success-light: rgba(95, 143, 116, 0.12);
+  --danger: #e05555;
+  --danger-light: rgba(220, 80, 80, 0.12);
+  --warning: #d8a85a;
+  --warning-light: rgba(216, 168, 90, 0.12);
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+  --pinned-bg: #23201a;
+  --pinned-border: #39331f;
+  --pinned-label: #cf9f54;
+  --checkbox-border: #7a8eb0;
+  color-scheme: dark;
 }
 
 body {
@@ -27,12 +61,13 @@ body {
   color: var(--text);
   min-height: 100vh;
   line-height: 1.5;
+  transition: background 0.2s, color 0.2s;
 }
 
 #app { min-height: 100vh; }
 
 .app {
-  max-width: 760px;
+  max-width: 1080px;
   margin: 0 auto;
   padding: 0 16px 60px;
 }
@@ -43,12 +78,32 @@ header {
   margin-bottom: 24px;
 }
 
+.header-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
 .header-title {
   font-size: 22px;
   font-weight: 700;
   letter-spacing: -0.3px;
-  margin-bottom: 20px;
 }
+
+.theme-toggle {
+  background: var(--surface);
+  border: 1.5px solid var(--border);
+  border-radius: 99px;
+  padding: 5px 12px;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s, color 0.15s;
+}
+
+.theme-toggle:hover { color: var(--text); border-color: var(--text-muted); }
 
 .tabs {
   display: flex;

@@ -3,6 +3,11 @@ export type TaskType = 'task' | 'repeated' | 'multistep';
 export const DayNight = { DAY: 'day', NIGHT: 'night' } as const;
 export type DayNight = (typeof DayNight)[keyof typeof DayNight];
 
+export const DayNightLabel = {
+  DAY:   '☀️ Work/Errand',
+  NIGHT: '🌙 Personal',
+} as const;
+
 export interface SimpleTask {
   id: string | number;
   type: TaskType;

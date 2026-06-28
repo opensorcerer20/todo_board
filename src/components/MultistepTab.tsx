@@ -99,34 +99,29 @@ export default function MultistepTab({ db }: Props) {
         </div>
       )}
 
-      <div className="task-list">
-        {tasks.map(project => {
+      {tasks.length > 0 && (() => {
+        const active   = tasks.filter(p => !p.deferred);
+        const deferred = tasks.filter(p => p.deferred);
+
+        function renderCard(project: MultiStepProject) {
           const total   = project.steps.length;
           const done    = project.steps.filter(s => s.completedAt !== null).length;
           const allDone = multistepComplete(project);
           const pct     = total > 0 ? (done / total) * 100 : 0;
-
           return (
             <div className="task-card" key={project.id}>
               <div className="task-card-header">
                 <span className={'task-title' + (allDone ? ' completed' : '')}>{project.title}</span>
+                {project.deferred && <span className="badge badge-amber">⏸ Deferred</span>}
                 <span className={`badge ${allDone ? 'badge-green' : 'badge-gray'}`}>
                   {done}/{total}
                 </span>
                 <button className="btn-icon btn-edit" title="Edit" onClick={() => setEditing(project)}>🖌</button>
                 <button className="btn-icon" title="Delete" onClick={() => remove(project.id)}>×</button>
               </div>
-
-              {project.deferred && (
-                <div className="task-meta-row">
-                  <span className="badge badge-amber">⏸ Deferred</span>
-                </div>
-              )}
-
               <div className="progress-bar-wrap">
                 <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
               </div>
-
               <div className="steps-list">
                 {project.steps.map(step => (
                   <label
@@ -148,8 +143,27 @@ export default function MultistepTab({ db }: Props) {
               </div>
             </div>
           );
-        })}
-      </div>
+        }
+
+        return (
+          <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="section-label">Active</div>
+              {active.length === 0
+                ? <div className="home-col-empty">No active projects</div>
+                : <div className="task-list">{active.map(renderCard)}</div>
+              }
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="section-label">Deferred</div>
+              {deferred.length === 0
+                ? <div className="home-col-empty">No deferred projects</div>
+                : <div className="task-list">{deferred.map(renderCard)}</div>
+              }
+            </div>
+          </div>
+        );
+      })()}
 
       {editing && (
         <EditProjectModal

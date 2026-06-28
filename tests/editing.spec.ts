@@ -33,13 +33,13 @@ test('can star a task via edit modal', async ({ page }) => {
 test('can change task day/night via edit modal', async ({ page }) => {
   await addTask(page, 'Night task');
   const card = page.locator('.task-card', { hasText: 'Night task' });
-  await expect(card.locator('.badge', { hasText: '🌙 Night' })).toBeVisible();
+  await expect(card.locator('.badge', { hasText: '🌙 Personal' })).toBeVisible();
 
   await card.getByTitle('Edit').click();
   await page.locator('.modal-card .form-group', { hasText: 'Time' }).locator('select').selectOption('day');
   await page.getByRole('button', { name: 'Save' }).click();
 
-  await expect(card.locator('.badge', { hasText: '☀️ Day' })).toBeVisible();
+  await expect(card.locator('.badge', { hasText: '☀️ Work/Errand' })).toBeVisible();
 });
 
 test('cancel closes task edit modal without saving', async ({ page }) => {
@@ -90,13 +90,13 @@ test('can change repeat task reset day via edit modal', async ({ page }) => {
 test('can change repeat task day/night via edit modal', async ({ page }) => {
   await addRepeatedTask(page, 'Morning habit');
   const card = page.locator('.task-card', { hasText: 'Morning habit' });
-  await expect(card.locator('.badge', { hasText: '🌙 Night' })).toBeVisible();
+  await expect(card.locator('.badge', { hasText: '🌙 Personal' })).toBeVisible();
 
   await card.getByTitle('Edit').click();
   await page.locator('.modal-card .form-group', { hasText: 'Time' }).locator('select').selectOption('day');
   await page.getByRole('button', { name: 'Save' }).click();
 
-  await expect(card.locator('.badge', { hasText: '☀️ Day' })).toBeVisible();
+  await expect(card.locator('.badge', { hasText: '☀️ Work/Errand' })).toBeVisible();
 });
 
 // ── Multistep tab ─────────────────────────────────────────────────────────────
