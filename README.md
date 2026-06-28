@@ -127,7 +127,7 @@ Covers the daily streak calculation for both log modes. Logs are injected direct
 The `logMode: 'yesterday'` tests verify the anchor shift: a task configured to log yesterday's date has a one-day offset applied to the streak window, so "logged yesterday" maps to "recorded two days ago" and still counts as an active streak.
 
 ## Todo
-[x] edit tasks
-[x] export button
-- checkboxes on home tab
-[x] multistep: show deferred on right side minimized but still editable
+- [x] edit tasks
+- [x] export button
+- [ ] checkboxes on home tab
+- [x] multistep: show deferred on right side minimized but still editable
