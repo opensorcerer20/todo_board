@@ -34,11 +34,10 @@ test('task list does not show a later step when an earlier step in a different d
 
   const tasksPanel = page.getByTestId('tasks-panel');
 
-  // Night mode: current step is Day, so nothing from this project should appear in the task list
-  await page.getByRole('button', { name: '🌙 Personal' }).click();
+  // The current step is Day — the Night step must never surface in the task list
+  // regardless of which section is shown, because Step 1 is still incomplete.
   await expect(tasksPanel.getByText('Later night step')).not.toBeVisible();
 
-  // Work/Errand mode: current step is Day and matches — it should appear
-  await page.getByRole('button', { name: '☀️ Work/Errand' }).click();
+  // The Day step (current) should appear in the Work/Errand section.
   await expect(tasksPanel.getByText('Current day step')).toBeVisible();
 });

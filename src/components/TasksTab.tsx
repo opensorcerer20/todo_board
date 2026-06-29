@@ -21,6 +21,7 @@ import {
 import {
   makeTask,
   todayStr,
+  yesterdayStr,
 } from '../utils';
 
 interface Props { db: IDBDatabase }
@@ -64,7 +65,7 @@ export default function TasksTab({ db }: Props) {
   }
 
   const pending   = tasks.filter(t => t.completedAt === null);
-  const completed = tasks.filter(t => t.completedAt !== null);
+  const completed = tasks.filter(t => t.completedAt !== null && t.completedAt >= yesterdayStr());
 
   return (
     <div>

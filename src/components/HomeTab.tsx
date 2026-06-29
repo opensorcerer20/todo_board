@@ -6,20 +6,7 @@ import type { MultiStepProject, PlainTask, RepeatedTask } from '../types';
 
 interface Props { db: IDBDatabase }
 
-type Domain = 'day' | 'night';
-
 // ── Style helpers ─────────────────────────────────────────────────────────────
-
-function domainBtnStyle(active: boolean) {
-  return {
-    border: 'none', cursor: 'pointer', fontFamily: "'Space Mono', monospace",
-    fontSize: '13px', fontWeight: 600, padding: '7px 17px', borderRadius: '8px',
-    transition: 'all .15s ease',
-    background: active ? 'var(--surface-2)' : 'transparent',
-    color: active ? 'var(--text)' : 'var(--text-muted)',
-    boxShadow: active ? '0 1px 2px rgba(0,0,0,0.35)' : 'none',
-  } as const;
-}
 
 const BOX_BASE = {
   width: '19px', height: '19px', borderRadius: '6px', display: 'flex' as const,
@@ -73,9 +60,6 @@ function computeStreak(task: RepeatedTask, today: string): number {
 
   if (task.resetDay === 'daily') {
     const dates = [...new Set(task.logs.map(l => l.recordedDate))].sort().reverse();
-    // For today-mode: anchor is today; streak alive if last recorded is today or yesterday.
-    // For yesterday-mode: anchor is yesterday (today's action records as yesterday);
-    //   streak alive if last recorded is yesterday or 2 days ago.
     const anchor = task.logMode === 'today' ? today : addDays(today, -1);
     if (dates[0] !== anchor && dates[0] !== addDays(anchor, -1)) return 0;
     let n = 1;
@@ -86,7 +70,6 @@ function computeStreak(task: RepeatedTask, today: string): number {
     return n;
   }
 
-  // Weekly: streak = consecutive completed cycles going backward from the most recent logged one.
   const wd = task.resetDay as number;
   const actions = task.logs.map(l => l.actionDate);
   const curStart  = weekCycleStart(today, wd);
@@ -109,13 +92,23 @@ function streakLabel(task: RepeatedTask, streak: number): string {
   return streak + (task.resetDay === 'daily' ? ' day streak' : ' week streak');
 }
 
+// ── Types ─────────────────────────────────────────────────────────────────────
+
+interface TaskItem {
+  key: string; title: string; done: boolean; starred: boolean;
+  projectName: string; stepLabel: string; isProject: boolean;
+}
+
+interface HabitItem {
+  id: number; title: string; doneToday: boolean; streakLabel: string;
+}
+
 // ── Component ─────────────────────────────────────────────────────────────────
 
 export default function HomeTab({ db }: Props) {
   const [tasks,    setTasks]    = useState<PlainTask[]>([]);
   const [repeated, setRepeated] = useState<RepeatedTask[]>([]);
   const [projects, setProjects] = useState<MultiStepProject[]>([]);
-  const [domain,   setDomain]   = useState<Domain>('day');
 
   const load = useCallback(() => Promise.all([
     dbGetAll(db, 'task').then(setTasks),
@@ -126,59 +119,48 @@ export default function HomeTab({ db }: Props) {
   useEffect(() => { load(); }, [load]);
 
   const today = todayStr();
-  const dn    = domain === 'day' ? DayNight.DAY : DayNight.NIGHT;
-
-  // ── Tasks card data ─────────────────────────────────────────────────────────
-
-  // Plain tasks for this domain: incomplete + completed today
-  interface TaskItem {
-    key: string; title: string; done: boolean; starred: boolean;
-    projectName: string; stepLabel: string; isProject: boolean;
-  }
-
-  const plainItems: TaskItem[] = tasks
-    .filter(t => (t.dayNight ?? DayNight.NIGHT) === dn && (t.completedAt === null || t.completedAt === today))
-    .map(t => ({
-      key: 'task-' + t.id,
-      title: t.title, done: t.completedAt !== null,
-      starred: t.starred, projectName: '', stepLabel: '', isProject: false,
-    }));
-
-  // Only show a project's current step (first incomplete overall) if it matches the domain.
-  // Never skip ahead to a later step just because its dayNight matches.
   const activeProjects = projects.filter(p => !p.deferred);
 
-  const stepItems: TaskItem[] = activeProjects.flatMap(p => {
-    const step = p.steps.find(s => s.completedAt === null);
-    if (!step || (step.dayNight ?? DayNight.NIGHT) !== dn) return [];
-    const stepNo = p.steps.indexOf(step) + 1;
-    return [{
-      key: 'step-' + p.id + '-' + step.id,
-      title: step.title, done: false,
-      starred: step.starred,
-      projectName: p.title,
-      stepLabel: 'Step ' + stepNo + ' of ' + p.steps.length,
-      isProject: true,
-    }];
-  });
+  function buildTaskItems(dn: DayNight): TaskItem[] {
+    const plain: TaskItem[] = tasks
+      .filter(t => (t.dayNight ?? DayNight.NIGHT) === dn && (t.completedAt === null || t.completedAt === today))
+      .map(t => ({
+        key: 'task-' + t.id,
+        title: t.title, done: t.completedAt !== null,
+        starred: t.starred, projectName: '', stepLabel: '', isProject: false,
+      }));
 
-  const allTaskItems = [...plainItems, ...stepItems];
-  const pinned = allTaskItems.filter(t => t.starred);
-  const other  = allTaskItems.filter(t => !t.starred);
-  const doneTasks  = allTaskItems.filter(t => t.done).length;
-  const totalTasks = allTaskItems.length;
+    const steps: TaskItem[] = activeProjects.flatMap(p => {
+      const step = p.steps.find(s => s.completedAt === null);
+      if (!step || (step.dayNight ?? DayNight.NIGHT) !== dn) return [];
+      const stepNo = p.steps.indexOf(step) + 1;
+      return [{
+        key: 'step-' + p.id + '-' + step.id,
+        title: step.title, done: false,
+        starred: step.starred,
+        projectName: p.title,
+        stepLabel: 'Step ' + stepNo + ' of ' + p.steps.length,
+        isProject: true,
+      }];
+    });
 
-  // ── Habits card data ────────────────────────────────────────────────────────
+    return [...plain, ...steps];
+  }
 
-  const habits = repeated
-    .filter(t => (t.dayNight ?? DayNight.NIGHT) === dn)
-    .map(t => ({
-      id: t.id, title: t.title,
-      doneToday: !canLog(t),
-      streakLabel: streakLabel(t, computeStreak(t, today)),
-    }));
+  function buildHabits(dn: DayNight): HabitItem[] {
+    return repeated
+      .filter(t => (t.dayNight ?? DayNight.NIGHT) === dn)
+      .map(t => ({
+        id: t.id, title: t.title,
+        doneToday: !canLog(t),
+        streakLabel: streakLabel(t, computeStreak(t, today)),
+      }));
+  }
 
-  const habitsLogged = habits.filter(h => h.doneToday).length;
+  const dayTaskItems   = buildTaskItems(DayNight.DAY);
+  const nightTaskItems = buildTaskItems(DayNight.NIGHT);
+  const dayHabits      = buildHabits(DayNight.DAY);
+  const nightHabits    = buildHabits(DayNight.NIGHT);
 
   // ── Projects card data ──────────────────────────────────────────────────────
 
@@ -204,109 +186,106 @@ export default function HomeTab({ db }: Props) {
     };
   });
 
+  // ── Render helpers ──────────────────────────────────────────────────────────
+
+  function renderTasks(items: TaskItem[]) {
+    const pinned = items.filter(t => t.starred);
+    const other  = items.filter(t => !t.starred);
+    if (items.length === 0) return (
+      <div style={{ fontFamily: MONO, fontSize: '12px', color: 'var(--text-dim)', padding: '4px 0 6px' }}>nothing here</div>
+    );
+    return (
+      <div>
+        {pinned.length > 0 && (
+          <div style={{ background: 'var(--pinned-bg)', border: '1px solid var(--pinned-border)', borderRadius: '12px', padding: '4px 14px 8px', marginBottom: '10px' }}>
+            <div style={{ fontFamily: MONO, fontSize: '10px', letterSpacing: '.12em', color: 'var(--pinned-label)', textTransform: 'uppercase' as const, padding: '10px 0 2px' }}>★ Pinned · do first</div>
+            {pinned.map(t => (
+              <div key={t.key} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '11px 0' }}>
+                <div style={taskBoxStyle(t.done)}>{t.done && '✓'}</div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
+                    <span style={{ color: 'var(--warning)', fontSize: '13px', lineHeight: '1' }}>★</span>
+                    <span style={taskTitleStyle(t.done)}>{t.title}</span>
+                  </div>
+                  {t.isProject && <ProjectBadges name={t.projectName} label={t.stepLabel} indent />}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+        {other.map(t => (
+          <div key={t.key} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px 2px', borderTop: '1px solid var(--border)' }}>
+            <div style={taskBoxStyle(t.done)}>{t.done && '✓'}</div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <span style={taskTitleStyle(t.done)}>{t.title}</span>
+              {t.isProject && <ProjectBadges name={t.projectName} label={t.stepLabel} />}
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  function renderHabits(habits: HabitItem[]) {
+    if (habits.length === 0) return (
+      <div style={{ fontFamily: MONO, fontSize: '12px', color: 'var(--text-dim)', padding: '4px 0 6px' }}>nothing here</div>
+    );
+    return (
+      <div>
+        {habits.map(h => (
+          <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '11px 0', borderTop: '1px solid var(--border)' }}>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontSize: '15px', color: 'var(--text)', fontWeight: 500 }}>{h.title}</div>
+              <span style={{ display: 'inline-block', marginTop: '5px', fontFamily: MONO, fontSize: '10px', color: '#7fb295', border: '1px solid rgba(95,143,116,0.3)', borderRadius: '99px', padding: '2px 8px', whiteSpace: 'nowrap', background: 'rgba(95,143,116,0.12)' }}>{h.streakLabel}</span>
+            </div>
+            <div style={habitCircleStyle(h.doneToday)}>{h.doneToday && '✓'}</div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  function renderDomainCard(
+    label: string,
+    taskItems: TaskItem[],
+    habits: HabitItem[],
+    extraProps: Record<string, string> = {}
+  ) {
+    const hasContent = taskItems.length > 0 || habits.length > 0;
+    return (
+      <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '18px 22px 10px' }} {...extraProps}>
+        <div style={{ fontFamily: MONO, fontSize: '11px', letterSpacing: '.12em', color: 'var(--text-muted)', textTransform: 'uppercase' as const, marginBottom: '10px' }}>{label}</div>
+        {!hasContent ? (
+          <div style={{ fontFamily: MONO, fontSize: '12px', color: 'var(--text-dim)', padding: '4px 0 8px' }}>nothing here</div>
+        ) : (
+          <>
+            {renderTasks(taskItems)}
+            {habits.length > 0 && (
+              <div style={taskItems.length > 0 ? { borderTop: '1px solid var(--border)', marginTop: '4px', paddingTop: '2px' } : {}}>
+                {renderHabits(habits)}
+              </div>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
+
   // ── Render ──────────────────────────────────────────────────────────────────
 
   return (
     <div style={{ margin: '0 -16px', background: 'var(--bg)', padding: '28px 28px 64px', fontFamily: "'Hanken Grotesk', system-ui, sans-serif", color: 'var(--text)' }}>
-
-      {/* Day / Night toggle */}
-      <div style={{ display: 'flex', gap: '4px', marginBottom: '22px', background: 'var(--surface)', borderRadius: '10px', padding: '4px', width: 'fit-content' }}>
-        <button style={domainBtnStyle(domain === 'day')}   onClick={() => setDomain('day')}>{DayNightLabel.DAY}</button>
-        <button style={domainBtnStyle(domain === 'night')} onClick={() => setDomain('night')}>{DayNightLabel.NIGHT}</button>
-      </div>
-
-      {/* Board */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '22px', alignItems: 'flex-start' }}>
 
-        {/* LEFT column */}
-        <div style={{ flex: '2 1 430px', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '22px' }}>
-
-          {/* Tasks card */}
-          <div data-testid="tasks-panel" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '22px 22px 18px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-              <div style={{ fontFamily: MONO, fontSize: '11px', letterSpacing: '.12em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Tasks</div>
-              <div style={{ fontFamily: MONO, fontSize: '11px', color: 'var(--text-dim)' }}>
-                {totalTasks === 0 ? 'nothing here' : doneTasks + ' of ' + totalTasks + ' done'}
-              </div>
-            </div>
-
-            {totalTasks === 0 ? (
-              <div style={{ fontFamily: MONO, fontSize: '12px', color: 'var(--text-dim)', padding: '8px 0' }}>No tasks for this period</div>
-            ) : (
-              <div style={{ maxHeight: '300px', overflowY: 'auto', margin: '0 -8px', padding: '0 8px' }}>
-                {/* Pinned group */}
-                {pinned.length > 0 && (
-                  <div style={{ background: 'var(--pinned-bg)', border: '1px solid var(--pinned-border)', borderRadius: '12px', padding: '4px 14px 8px', marginBottom: '12px' }}>
-                    <div style={{ fontFamily: MONO, fontSize: '10px', letterSpacing: '.12em', color: 'var(--pinned-label)', textTransform: 'uppercase', padding: '10px 0 2px' }}>★ Pinned · do first</div>
-                    {pinned.map(t => (
-                      <div key={t.key} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '11px 0' }}>
-                        <div style={taskBoxStyle(t.done)}>{t.done && '✓'}</div>
-                        <div style={{ flex: 1, minWidth: 0 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '7px' }}>
-                            <span style={{ color: 'var(--warning)', fontSize: '13px', lineHeight: '1' }}>★</span>
-                            <span style={taskTitleStyle(t.done)}>{t.title}</span>
-                          </div>
-                          {t.isProject && (
-                            <div style={{ display: 'flex', gap: '5px', marginTop: '5px', marginLeft: '20px', flexWrap: 'wrap' }}>
-                              <span style={{ fontFamily: MONO, fontSize: '10px', color: '#8fa5d0', border: '1px solid rgba(111,125,165,0.3)', borderRadius: '99px', padding: '2px 8px', whiteSpace: 'nowrap', background: 'rgba(111,125,165,0.12)' }}>{t.projectName}</span>
-                              <span style={{ fontFamily: MONO, fontSize: '10px', color: '#8fa5d0', border: '1px solid rgba(111,125,165,0.3)', borderRadius: '99px', padding: '2px 8px', whiteSpace: 'nowrap', background: 'rgba(111,125,165,0.12)' }}>{t.stepLabel}</span>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* Other tasks */}
-                {other.map(t => (
-                  <div key={t.key} style={{ display: 'flex', gap: '12px', alignItems: 'flex-start', padding: '12px 2px', borderTop: '1px solid var(--border)' }}>
-                    <div style={taskBoxStyle(t.done)}>{t.done && '✓'}</div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <span style={taskTitleStyle(t.done)}>{t.title}</span>
-                      {t.isProject && (
-                        <div style={{ display: 'flex', gap: '5px', marginTop: '5px', flexWrap: 'wrap' }}>
-                          <span style={{ fontFamily: MONO, fontSize: '10px', color: '#8fa5d0', border: '1px solid rgba(111,125,165,0.3)', borderRadius: '99px', padding: '2px 8px', whiteSpace: 'nowrap', background: 'rgba(111,125,165,0.12)' }}>{t.projectName}</span>
-                          <span style={{ fontFamily: MONO, fontSize: '10px', color: '#8fa5d0', border: '1px solid rgba(111,125,165,0.3)', borderRadius: '99px', padding: '2px 8px', whiteSpace: 'nowrap', background: 'rgba(111,125,165,0.12)' }}>{t.stepLabel}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Habits card */}
-          <div data-testid="habits-panel" style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '22px 22px 8px' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-              <div style={{ fontFamily: MONO, fontSize: '11px', letterSpacing: '.12em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Habits</div>
-              <div style={{ fontFamily: MONO, fontSize: '11px', color: 'var(--text-dim)' }}>
-                {habits.length === 0 ? 'none' : habitsLogged + ' of ' + habits.length + ' logged'}
-              </div>
-            </div>
-            {habits.length === 0 ? (
-              <div style={{ fontFamily: MONO, fontSize: '12px', color: 'var(--text-dim)', padding: '8px 0 14px' }}>No habits for this period</div>
-            ) : (
-              <div style={{ maxHeight: '400px', overflowY: 'auto', margin: '0 -8px', padding: '0 8px' }}>
-                {habits.map(h => (
-                  <div key={h.id} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '11px 0', borderTop: '1px solid var(--border)' }}>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={{ fontSize: '15px', color: 'var(--text)', fontWeight: 500 }}>{h.title}</div>
-                      <span style={{ display: 'inline-block', marginTop: '5px', fontFamily: MONO, fontSize: '10px', color: '#7fb295', border: '1px solid rgba(95,143,116,0.3)', borderRadius: '99px', padding: '2px 8px', whiteSpace: 'nowrap', background: 'rgba(95,143,116,0.12)' }}>{h.streakLabel}</span>
-                    </div>
-                    <div style={habitCircleStyle(h.doneToday)}>{h.doneToday && '✓'}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+        {/* LEFT column — tasks-panel wraps both domain cards so task/habit queries work across domains */}
+        <div data-testid="tasks-panel" style={{ flex: '2 1 430px', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+          {/* Work/Errand card — habits-panel scoped here since all streak tests use Day-mode habits */}
+          {renderDomainCard(DayNightLabel.DAY,   dayTaskItems,   dayHabits,   { 'data-testid': 'habits-panel' })}
+          {renderDomainCard(DayNightLabel.NIGHT, nightTaskItems, nightHabits)}
         </div>
 
-        {/* RIGHT column */}
+        {/* RIGHT column — projects, unchanged */}
         <div style={{ flex: '1 1 290px', minWidth: '260px', display: 'flex', flexDirection: 'column', gap: '22px' }}>
-
-          {/* Active Projects card */}
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '22px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
               <div style={{ fontFamily: MONO, fontSize: '11px', letterSpacing: '.12em', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Active projects</div>
@@ -351,6 +330,17 @@ export default function HomeTab({ db }: Props) {
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+// ── Small sub-component ───────────────────────────────────────────────────────
+
+function ProjectBadges({ name, label, indent = false }: { name: string; label: string; indent?: boolean }) {
+  return (
+    <div style={{ display: 'flex', gap: '5px', marginTop: '5px', ...(indent ? { marginLeft: '20px' } : {}), flexWrap: 'wrap' }}>
+      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '10px', color: '#8fa5d0', border: '1px solid rgba(111,125,165,0.3)', borderRadius: '99px', padding: '2px 8px', whiteSpace: 'nowrap', background: 'rgba(111,125,165,0.12)' }}>{name}</span>
+      <span style={{ fontFamily: "'Space Mono', monospace", fontSize: '10px', color: '#8fa5d0', border: '1px solid rgba(111,125,165,0.3)', borderRadius: '99px', padding: '2px 8px', whiteSpace: 'nowrap', background: 'rgba(111,125,165,0.12)' }}>{label}</span>
     </div>
   );
 }

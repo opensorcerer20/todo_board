@@ -29,7 +29,6 @@ test('starred plain task appears before non-starred on Home tab', async ({ page 
   await page.getByRole('button', { name: 'Add' }).click();
 
   await goToTab(page, 'Home');
-  await page.getByRole('button', { name: '🌙 Personal' }).click();
   const tasksPanel = page.getByTestId('tasks-panel');
   await expect(tasksPanel.getByText('★ Pinned · do first')).toBeVisible();
   await expect(tasksPanel.getByText('Starred task')).toBeVisible();
@@ -126,5 +125,6 @@ test('non-deferred multistep project appears on Home tab', async ({ page }) => {
   await addMultistepProject(page, 'Active Project', ['First step']);
 
   await goToTab(page, 'Home');
-  await expect(page.getByText('Active Project', { exact: true })).toBeVisible();
+  // The project name appears in both the tasks panel badge and the Active Projects card.
+  await expect(page.getByText('Active Project', { exact: true }).first()).toBeVisible();
 });

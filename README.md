@@ -132,3 +132,8 @@ The `logMode: 'yesterday'` tests verify the anchor shift: a task configured to l
 - [ ] checkboxes on home tab
 - [x] multistep: show deferred on right side minimized but still editable
 - [ ] clock for work/personal/weekend that switches view (every 5-10 minutes)
+- [ ] limit 2 projects
+- [ ] on refresh popup modal for "yesterday" tasks not yet logged with "dismiss" or "snooze" options
+- [ ] report tab with visualizations
+- [x] hide completed tasks after 1 day (tasks tab)
+- [ ] requests that show below projects on home tab
