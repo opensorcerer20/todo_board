@@ -1,4 +1,4 @@
-export type TaskType = 'task' | 'repeated' | 'multistep';
+export type TaskType = 'task' | 'request' | 'repeated' | 'multistep';
 
 export const DayNight = { DAY: 'day', NIGHT: 'night' } as const;
 export type DayNight = (typeof DayNight)[keyof typeof DayNight];
@@ -50,5 +50,8 @@ export interface LogEntry {
 /** A plain top-level task stored directly in IndexedDB. */
 export type PlainTask = SimpleTask & { type: 'task'; id: number; starred: boolean; dayNight: DayNight };
 
+/** A request / ask stored directly in IndexedDB. */
+export type RequestTask = SimpleTask & { type: 'request'; id: number; starred: boolean; dayNight: DayNight };
+
 /** Discriminated union of all top-level IndexedDB records. */
-export type AnyTask = PlainTask | RepeatedTask | MultiStepProject;
+export type AnyTask = PlainTask | RequestTask | RepeatedTask | MultiStepProject;

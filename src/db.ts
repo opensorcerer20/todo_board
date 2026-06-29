@@ -1,5 +1,5 @@
 import { DayNight } from './types';
-import type { AnyTask, PlainTask, RepeatedTask, MultiStepProject } from './types';
+import type { AnyTask, PlainTask, RequestTask, RepeatedTask, MultiStepProject } from './types';
 
 const DB_NAME = 'task_board_v2';
 
@@ -16,6 +16,7 @@ export function openDB(): Promise<IDBDatabase> {
 }
 
 export function dbGetAll(db: IDBDatabase, type: 'task'): Promise<PlainTask[]>;
+export function dbGetAll(db: IDBDatabase, type: 'request'): Promise<RequestTask[]>;
 export function dbGetAll(db: IDBDatabase, type: 'repeated'): Promise<RepeatedTask[]>;
 export function dbGetAll(db: IDBDatabase, type: 'multistep'): Promise<MultiStepProject[]>;
 export function dbGetAll(db: IDBDatabase, type: string): Promise<AnyTask[]> {
@@ -57,8 +58,8 @@ export function migrateDB(db: IDBDatabase): Promise<void> {
       for (const r of records) {
         let changed = false;
 
-        // Fields for task and repeated types
-        if (r.type === 'task' || r.type === 'repeated') {
+        // Fields for task, request, and repeated types
+        if (r.type === 'task' || r.type === 'request' || r.type === 'repeated') {
           if (r.starred === undefined) { r.starred = false; changed = true; }
           if (r.dayNight === undefined) { r.dayNight = DayNight.NIGHT; changed = true; }
         }

@@ -11,7 +11,7 @@ import {
   dbGetAll,
   dbPut,
 } from '../db';
-import type { PlainTask } from '../types';
+import type { PlainTask, RequestTask } from '../types';
 import { DayNight, DayNightLabel } from '../types';
 import {
   DayNightSelect,
@@ -24,30 +24,40 @@ import {
   yesterdayStr,
 } from '../utils';
 
+type EditableTask = PlainTask | RequestTask;
+
 interface Props { db: IDBDatabase }
 
 export default function TasksTab({ db }: Props) {
-  const [tasks, setTasks]       = useState<PlainTask[]>([]);
-  const [title, setTitle]       = useState('');
-  const [starred, setStarred]   = useState(false);
-  const [dayNight, setDayNight] = useState<typeof DayNight[keyof typeof DayNight]>(DayNight.NIGHT);
-  const [editing, setEditing]   = useState<PlainTask | null>(null);
+  const [tasks,     setTasks]     = useState<PlainTask[]>([]);
+  const [requests,  setRequests]  = useState<RequestTask[]>([]);
+  const [title,     setTitle]     = useState('');
+  const [starred,   setStarred]   = useState(false);
+  const [dayNight,  setDayNight]  = useState<typeof DayNight[keyof typeof DayNight]>(DayNight.NIGHT);
+  const [taskKind,  setTaskKind]  = useState<'task' | 'request'>('task');
+  const [editing,   setEditing]   = useState<EditableTask | null>(null);
 
-  const load = useCallback(() => dbGetAll(db, 'task').then(setTasks), [db]);
+  const load = useCallback(() => Promise.all([
+    dbGetAll(db, 'task').then(setTasks),
+    dbGetAll(db, 'request').then(setRequests),
+  ]), [db]);
   useEffect(() => { load(); }, [load]);
 
   async function addTask(e: Event) {
     e.preventDefault();
     const t = title.trim();
     if (!t) return;
-    await dbAdd(db, makeTask('task', { title: t, starred, dayNight }));
+    const newItem = taskKind === 'request'
+      ? makeTask('request', { title: t, starred, dayNight })
+      : makeTask('task',    { title: t, starred, dayNight });
+    await dbAdd(db, newItem);
     setTitle('');
     setStarred(false);
     setDayNight(DayNight.NIGHT);
     load();
   }
 
-  async function toggle(task: PlainTask) {
+  async function toggle(task: EditableTask) {
     await dbPut(db, { ...task, completedAt: task.completedAt ? null : todayStr() });
     load();
   }
@@ -57,21 +67,32 @@ export default function TasksTab({ db }: Props) {
     load();
   }
 
-  async function saveEdit(patch: Pick<PlainTask, 'title' | 'starred' | 'dayNight'>) {
+  async function saveEdit(patch: Pick<EditableTask, 'title' | 'starred' | 'dayNight'>) {
     if (!editing) return;
     await dbPut(db, { ...editing, ...patch });
     setEditing(null);
     load();
   }
 
-  const pending   = tasks.filter(t => t.completedAt === null);
-  const completed = tasks.filter(t => t.completedAt !== null && t.completedAt >= yesterdayStr());
+  const pendingTasks     = tasks.filter(t => t.completedAt === null);
+  const pendingRequests  = requests.filter(r => r.completedAt === null);
+  const completedTasks   = tasks.filter(t => t.completedAt !== null && t.completedAt >= yesterdayStr());
+  const completedReqs    = requests.filter(r => r.completedAt !== null && r.completedAt >= yesterdayStr());
+
+  const isEmpty = tasks.length === 0 && requests.length === 0;
 
   return (
     <div>
       <form className="add-form" onSubmit={addTask}>
         <div className="add-form-title">New Task</div>
         <div className="form-row">
+          <div className="form-group">
+            <label>Type</label>
+            <select value={taskKind} onChange={e => setTaskKind((e.target as HTMLSelectElement).value as 'task' | 'request')}>
+              <option value="task">Task</option>
+              <option value="request">Request</option>
+            </select>
+          </div>
           <StarToggle starred={starred} onToggle={() => setStarred(p => !p)} style={{ alignSelf: 'flex-end' }} />
           <TitleInput value={title} onChange={setTitle} placeholder="What needs to be done?" autoFocus />
           <DayNightSelect value={dayNight} onChange={setDayNight} />
@@ -81,18 +102,18 @@ export default function TasksTab({ db }: Props) {
         </div>
       </form>
 
-      {tasks.length === 0 && (
+      {isEmpty && (
         <div className="empty-state">
           <div className="empty-icon">✅</div>
           <p>No tasks yet — add one above.</p>
         </div>
       )}
 
-      {pending.length > 0 && (
+      {pendingTasks.length > 0 && (
         <>
-          <div className="section-label">To Do · {pending.length}</div>
+          <div className="section-label">To Do · {pendingTasks.length}</div>
           <div className="task-list" style={{ marginBottom: 20 }}>
-            {pending.map(task => (
+            {pendingTasks.map(task => (
               <div className="task-card" key={task.id}>
                 <div className="task-card-header">
                   <input type="checkbox" checked={false} onChange={() => toggle(task)} />
@@ -107,12 +128,31 @@ export default function TasksTab({ db }: Props) {
         </>
       )}
 
-      {completed.length > 0 && (
+      {pendingRequests.length > 0 && (
         <>
-          <div className="section-label">Completed · {completed.length}</div>
+          <div className="section-label">Requests · {pendingRequests.length}</div>
+          <div className="task-list" style={{ marginBottom: 20 }}>
+            {pendingRequests.map(req => (
+              <div className="task-card" key={req.id}>
+                <div className="task-card-header">
+                  <input type="checkbox" checked={false} onChange={() => toggle(req)} />
+                  <span className="task-title">{req.title}</span>
+                  <button className="btn-icon btn-edit" title="Edit" onClick={() => setEditing(req)}>🖌</button>
+                  <button className="btn-icon" title="Delete" onClick={() => remove(req.id)}>×</button>
+                </div>
+                <TaskMeta starred={req.starred} dayNight={req.dayNight} />
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+
+      {(completedTasks.length > 0 || completedReqs.length > 0) && (
+        <>
+          <div className="section-label">Completed · {completedTasks.length + completedReqs.length}</div>
           <div className="task-list">
-            {completed.map(task => (
-              <div className="task-card" key={task.id} style={{ opacity: 0.65 }}>
+            {[...completedTasks, ...completedReqs].map(task => (
+              <div className="task-card" key={task.type + '-' + task.id} style={{ opacity: 0.65 }}>
                 <div className="task-card-header">
                   <input type="checkbox" checked={true} onChange={() => toggle(task)} />
                   <span className="task-title completed">{task.title}</span>
@@ -153,8 +193,8 @@ function EditModal({
   onSave,
   onClose,
 }: {
-  task: PlainTask;
-  onSave: (patch: Pick<PlainTask, 'title' | 'starred' | 'dayNight'>) => void;
+  task: EditableTask;
+  onSave: (patch: Pick<EditableTask, 'title' | 'starred' | 'dayNight'>) => void;
   onClose: () => void;
 }) {
   const [title, setTitle]       = useState(task.title);
@@ -184,7 +224,7 @@ function EditModal({
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <span className="modal-title">Edit Task</span>
+          <span className="modal-title">Edit {task.type === 'request' ? 'Request' : 'Task'}</span>
           <button className="btn-icon" onClick={onClose}>×</button>
         </div>
         <form onSubmit={submit}>

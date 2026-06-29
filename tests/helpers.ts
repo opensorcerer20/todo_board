@@ -10,6 +10,13 @@ export async function addTask(page: Page, title: string) {
   await page.getByRole('button', { name: 'Add' }).click();
 }
 
+export async function addRequest(page: Page, title: string) {
+  await goToTab(page, 'Tasks');
+  await page.locator('.add-form .form-group', { hasText: 'Type' }).locator('select').selectOption('request');
+  await page.getByPlaceholder('What needs to be done?').fill(title);
+  await page.getByRole('button', { name: 'Add' }).click();
+}
+
 export async function addRepeatedTask(page: Page, title: string) {
   await goToTab(page, 'Repeat Tasks');
   await page.getByPlaceholder('Habit or recurring task…').fill(title);

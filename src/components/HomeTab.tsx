@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'preact/hooks';
 import { dbGetAll } from '../db';
 import { canLog, resetLabel, todayStr } from '../utils';
 import { DayNight, DayNightLabel } from '../types';
-import type { MultiStepProject, PlainTask, RepeatedTask } from '../types';
+import type { MultiStepProject, PlainTask, RequestTask, RepeatedTask } from '../types';
 
 interface Props { db: IDBDatabase }
 
@@ -107,11 +107,13 @@ interface HabitItem {
 
 export default function HomeTab({ db }: Props) {
   const [tasks,    setTasks]    = useState<PlainTask[]>([]);
+  const [requests, setRequests] = useState<RequestTask[]>([]);
   const [repeated, setRepeated] = useState<RepeatedTask[]>([]);
   const [projects, setProjects] = useState<MultiStepProject[]>([]);
 
   const load = useCallback(() => Promise.all([
     dbGetAll(db, 'task').then(setTasks),
+    dbGetAll(db, 'request').then(setRequests),
     dbGetAll(db, 'repeated').then(setRepeated),
     dbGetAll(db, 'multistep').then(setProjects),
   ]), [db]);
@@ -284,7 +286,7 @@ export default function HomeTab({ db }: Props) {
           {renderDomainCard(DayNightLabel.NIGHT, nightTaskItems, nightHabits)}
         </div>
 
-        {/* RIGHT column — projects, unchanged */}
+        {/* RIGHT column — projects + requests */}
         <div style={{ flex: '1 1 290px', minWidth: '260px', display: 'flex', flexDirection: 'column', gap: '22px' }}>
           <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '22px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -328,6 +330,30 @@ export default function HomeTab({ db }: Props) {
               </div>
             )}
           </div>
+
+          {/* Requests card */}
+          {requests.filter(r => r.completedAt === null).length > 0 && (() => {
+            const pending = requests.filter(r => r.completedAt === null);
+            return (
+              <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '16px', padding: '22px' }}>
+                <div style={{ fontFamily: MONO, fontSize: '11px', letterSpacing: '.12em', color: 'var(--text-muted)', textTransform: 'uppercase', marginBottom: '14px' }}>
+                  Requests · {pending.length}
+                </div>
+                <div style={{ display: 'flex', flexDirection: 'column' }}>
+                  {pending.map((r, i) => (
+                    <div key={r.id} style={{ display: 'flex', alignItems: 'flex-start', gap: '10px', ...(i > 0 ? { borderTop: '1px solid var(--border)', paddingTop: '12px', marginTop: '4px' } : {}) }}>
+                      <div style={{ flex: 1, minWidth: 0 }}>
+                        <div style={{ fontSize: '14px', color: 'var(--text)', fontWeight: 500 }}>
+                          {r.starred && <span style={{ color: 'var(--warning)', marginRight: '5px' }}>★</span>}
+                          {r.title}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>

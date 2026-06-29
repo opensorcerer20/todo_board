@@ -1,6 +1,6 @@
 import { DayNight } from './types';
 import type {
-  AnyTask, LogEntry, PlainTask, RepeatedTask, MultiStepProject, MultistepTask, TaskType,
+  AnyTask, LogEntry, PlainTask, RequestTask, RepeatedTask, MultiStepProject, MultistepTask, TaskType,
 } from './types';
 
 export const DAY_NAMES = [
@@ -47,6 +47,7 @@ export function multistepComplete(project: MultiStepProject): boolean {
 
 // Typed factory — returns the correct Omit<T, 'id'> shape per type.
 export function makeTask(type: 'task',      overrides?: Partial<Omit<PlainTask,         'id' | 'type'>>): Omit<PlainTask,         'id'>;
+export function makeTask(type: 'request',   overrides?: Partial<Omit<RequestTask,       'id' | 'type'>>): Omit<RequestTask,       'id'>;
 export function makeTask(type: 'repeated',  overrides?: Partial<Omit<RepeatedTask,      'id' | 'type'>>): Omit<RepeatedTask,      'id'>;
 export function makeTask(type: 'multistep', overrides?: Partial<Omit<MultiStepProject,  'id' | 'type'>>): Omit<MultiStepProject,  'id'>;
 export function makeTask(type: TaskType, overrides: Record<string, unknown> = {}): Record<string, unknown> {

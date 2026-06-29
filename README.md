@@ -136,4 +136,4 @@ The `logMode: 'yesterday'` tests verify the anchor shift: a task configured to l
 - [ ] on refresh popup modal for "yesterday" tasks not yet logged with "dismiss" or "snooze" options
 - [ ] report tab with visualizations
 - [x] hide completed tasks after 1 day (tasks tab)
-- [ ] requests that show below projects on home tab
+- [x] requests that show below projects on home tab
