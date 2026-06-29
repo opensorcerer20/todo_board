@@ -1,6 +1,6 @@
 import { DayNight } from './types';
 import type {
-  AnyTask, PlainTask, RepeatedTask, MultiStepProject, MultistepTask, TaskType,
+  AnyTask, LogEntry, PlainTask, RepeatedTask, MultiStepProject, MultistepTask, TaskType,
 } from './types';
 
 export const DAY_NAMES = [
@@ -60,3 +60,55 @@ export function newStep(title = ''): MultistepTask {
 
 // Re-export AnyTask so callers don't need to reach into types directly.
 export type { AnyTask };
+
+function addOneDayStr(dateStr: string): string {
+  const [y, m, d] = dateStr.split('-').map(Number);
+  const date = new Date(y, m - 1, d);
+  date.setDate(date.getDate() + 1);
+  return [
+    date.getFullYear(),
+    String(date.getMonth() + 1).padStart(2, '0'),
+    String(date.getDate()).padStart(2, '0'),
+  ].join('-');
+}
+
+export function recalcActionDates(
+  logs: LogEntry[],
+  newLogMode: 'today' | 'yesterday'
+): LogEntry[] {
+  return logs.map(log => ({
+    ...log,
+    actionDate: newLogMode === 'today' ? log.recordedDate : addOneDayStr(log.recordedDate),
+  }));
+}
+
+export type ActivityEntry =
+  | { kind: 'task';  id: number;  title: string;  completedAt: string }
+  | { kind: 'step';  projectId: number; projectTitle: string; stepTitle: string; completedAt: string }
+  | { kind: 'habit'; id: number;  title: string;  logMode: 'today' | 'yesterday'; recordedDate: string; actionDate: string };
+
+export function buildActivityLog(tasks: AnyTask[]): ActivityEntry[] {
+  const entries: ActivityEntry[] = [];
+
+  for (const t of tasks) {
+    if (t.type === 'task' && t.completedAt) {
+      entries.push({ kind: 'task', id: t.id as number, title: t.title, completedAt: t.completedAt });
+    } else if (t.type === 'multistep') {
+      for (const s of t.steps) {
+        if (s.completedAt) {
+          entries.push({ kind: 'step', projectId: t.id as number, projectTitle: t.title, stepTitle: s.title, completedAt: s.completedAt });
+        }
+      }
+    } else if (t.type === 'repeated') {
+      for (const log of t.logs) {
+        entries.push({ kind: 'habit', id: t.id as number, title: t.title, logMode: t.logMode, recordedDate: log.recordedDate, actionDate: log.actionDate });
+      }
+    }
+  }
+
+  return entries.sort((a, b) => {
+    const dateA = a.kind === 'habit' ? a.recordedDate : a.completedAt;
+    const dateB = b.kind === 'habit' ? b.recordedDate : b.completedAt;
+    return dateB.localeCompare(dateA);
+  });
+}

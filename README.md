@@ -131,3 +131,4 @@ The `logMode: 'yesterday'` tests verify the anchor shift: a task configured to l
 - [x] export button
 - [ ] checkboxes on home tab
 - [x] multistep: show deferred on right side minimized but still editable
+- [ ] clock for work/personal/weekend that switches view (every 5-10 minutes)
