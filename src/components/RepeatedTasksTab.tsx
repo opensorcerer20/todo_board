@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { dbGetAll, dbAdd, dbPut, dbDelete } from '../db';
-import { canLog, resetLabel, todayStr, yesterdayStr, makeTask } from '../utils';
+import { canLog, recalcActionDates, resetLabel, todayStr, yesterdayStr, makeTask } from '../utils';
 import { DayNight, DayNightLabel } from '../types';
 import type { RepeatedTask } from '../types';
 import {
@@ -61,7 +61,10 @@ export default function RepeatedTasksTab({ db }: Props) {
 
   async function saveEdit(patch: Pick<RepeatedTask, 'title' | 'starred' | 'dayNight' | 'resetDay' | 'logMode'>) {
     if (!editing) return;
-    await dbPut(db, { ...editing, ...patch });
+    const logs = patch.logMode !== editing.logMode
+      ? recalcActionDates(editing.logs, patch.logMode)
+      : editing.logs;
+    await dbPut(db, { ...editing, ...patch, logs });
     setEditing(null);
     load();
   }

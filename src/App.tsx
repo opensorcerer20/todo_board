@@ -13,6 +13,7 @@ import {
   openDB,
 } from './db';
 // import { runLegacyImport } from './legacyImport';
+import { buildActivityLog } from './utils';
 import type { TaskType } from './types';
 
 type Tab = TaskType | 'home';
@@ -55,6 +56,20 @@ export default function App() {
     });
   }
 
+  function handleExportActivity() {
+    if (!db) return;
+    dbExportAll(db).then(data => {
+      const log  = buildActivityLog(data);
+      const blob = new Blob([JSON.stringify(log, null, 2)], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      a.href     = url;
+      a.download = `task-board-activity-${new Date().toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+  }
+
   return (
     <div className="app">
       <header>
@@ -66,6 +81,9 @@ export default function App() {
             </button>
             <button className="theme-toggle" onClick={handleExport} disabled={!db}>
               Export JSON
+            </button>
+            <button className="theme-toggle" onClick={handleExportActivity} disabled={!db}>
+              Export Activity Log
             </button>
           </div>
         </div>
