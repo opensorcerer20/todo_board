@@ -18,6 +18,7 @@ import {
   StarToggle,
   TitleInput,
 } from './fields';
+import { DeleteButton } from './DeleteButton';
 import {
   makeTask,
   todayStr,
@@ -119,7 +120,7 @@ export default function TasksTab({ db }: Props) {
                   <input type="checkbox" checked={false} onChange={() => toggle(task)} />
                   <span className="task-title">{task.title}</span>
                   <button className="btn-icon btn-edit" title="Edit" onClick={() => setEditing(task)}>🖌</button>
-                  <button className="btn-icon" title="Delete" onClick={() => remove(task.id)}>×</button>
+                  <DeleteButton onConfirm={() => remove(task.id)} />
                 </div>
                 <TaskMeta starred={task.starred} dayNight={task.dayNight} />
               </div>
@@ -138,7 +139,7 @@ export default function TasksTab({ db }: Props) {
                   <input type="checkbox" checked={false} onChange={() => toggle(req)} />
                   <span className="task-title">{req.title}</span>
                   <button className="btn-icon btn-edit" title="Edit" onClick={() => setEditing(req)}>🖌</button>
-                  <button className="btn-icon" title="Delete" onClick={() => remove(req.id)}>×</button>
+                  <DeleteButton onConfirm={() => remove(req.id)} />
                 </div>
                 <TaskMeta starred={req.starred} dayNight={req.dayNight} />
               </div>
@@ -157,7 +158,7 @@ export default function TasksTab({ db }: Props) {
                   <input type="checkbox" checked={true} onChange={() => toggle(task)} />
                   <span className="task-title completed">{task.title}</span>
                   <button className="btn-icon btn-edit" title="Edit" onClick={() => setEditing(task)}>🖌</button>
-                  <button className="btn-icon" title="Delete" onClick={() => remove(task.id)}>×</button>
+                  <DeleteButton onConfirm={() => remove(task.id)} />
                 </div>
                 <TaskMeta starred={task.starred} dayNight={task.dayNight} />
               </div>

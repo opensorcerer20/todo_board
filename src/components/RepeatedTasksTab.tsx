@@ -10,6 +10,7 @@ import {
   StarToggle,
   TitleInput,
 } from './fields';
+import { DeleteButton } from './DeleteButton';
 
 interface Props { db: IDBDatabase }
 
@@ -115,7 +116,7 @@ export default function RepeatedTasksTab({ db }: Props) {
                   {eligible ? 'Log ✓' : 'Logged'}
                 </button>
                 <button className="btn-icon btn-edit" title="Edit" onClick={() => setEditing(task)}>🖌</button>
-                <button className="btn-icon" title="Delete" onClick={() => remove(task.id)}>×</button>
+                <DeleteButton onConfirm={() => remove(task.id)} />
               </div>
 
               <div className="task-meta-row">

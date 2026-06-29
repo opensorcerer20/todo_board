@@ -19,6 +19,7 @@ test('can delete a task', async ({ page }) => {
   await expect(page.locator('.task-card', { hasText: 'Temporary task' })).toBeVisible();
 
   await page.locator('.task-card', { hasText: 'Temporary task' }).getByTitle('Delete').click();
+  await page.getByRole('button', { name: 'Confirm' }).click();
 
   await expect(page.locator('.task-card', { hasText: 'Temporary task' })).not.toBeVisible();
 });

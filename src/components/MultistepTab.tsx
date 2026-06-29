@@ -4,6 +4,7 @@ import { makeTask, newStep, multistepComplete, todayStr } from '../utils';
 import { DayNight } from '../types';
 import type { MultiStepProject, MultistepTask } from '../types';
 import { DayNightSelect, StarToggle } from './fields';
+import { DeleteButton } from './DeleteButton';
 
 interface Props { db: IDBDatabase }
 
@@ -117,7 +118,7 @@ export default function MultistepTab({ db }: Props) {
                   {done}/{total}
                 </span>
                 <button className="btn-icon btn-edit" title="Edit" onClick={() => setEditing(project)}>🖌</button>
-                <button className="btn-icon" title="Delete" onClick={() => remove(project.id)}>×</button>
+                <DeleteButton onConfirm={() => remove(project.id)} />
               </div>
               <div className="progress-bar-wrap">
                 <div className="progress-bar-fill" style={{ width: `${pct}%` }} />
