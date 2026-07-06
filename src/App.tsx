@@ -3,6 +3,7 @@ import {
   useState,
 } from 'preact/hooks';
 
+import DayWalkthrough from './components/walkthrough/DayWalkthrough';
 import HomeTab from './components/HomeTab';
 import MultistepTab from './components/MultistepTab';
 import RepeatedTasksTab from './components/RepeatedTasksTab';
@@ -16,11 +17,12 @@ import {
 import { buildActivityLog } from './utils';
 import type { TaskType } from './types';
 
-type Tab = TaskType | 'home';
+type Tab = TaskType | 'home' | 'walkthrough';
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'home',      label: 'Home' },
-  { id: 'task',      label: 'Tasks' },
+  { id: 'home',        label: 'Home' },
+  { id: 'walkthrough', label: 'Walkthrough' },
+  { id: 'task',        label: 'Tasks' },
   { id: 'repeated',  label: 'Repeat Tasks' },
   { id: 'multistep', label: 'Multistep' },
 ];
@@ -113,6 +115,7 @@ export default function App() {
         {tab === 'multistep' && (
           db ? <MultistepTab db={db} /> : <div className="empty-state">Loading…</div>
         )}
+        {tab === 'walkthrough' && <DayWalkthrough />}
       </main>
     </div>
   );

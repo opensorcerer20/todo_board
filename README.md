@@ -127,12 +127,35 @@ Covers the daily streak calculation for both log modes. Logs are injected direct
 The `logMode: 'yesterday'` tests verify the anchor shift: a task configured to log yesterday's date has a one-day offset applied to the streak window, so "logged yesterday" maps to "recorded two days ago" and still counts as an active streak.
 
 ## Todo
+### Priority
+- [ ] CMS for tasks, habits, projects
+- [ ] separate app: daily planner
+  - [ ] types of things to log
+    - [ ] one shots: tasks, requests, work/errand, personal
+    - [ ] habits: log until 21 streak done
+    - [ ] projects: log work and check off milestones
+  - [ ] prefer central location for tasks: db on vultr, stores tasks, requests, work/errand, personal, habits, projects
+  - [ ] current task board is the CMS for the above
+  - [ ] daily planner pwa (mobile and desktop) updates db info
+  - [ ] need accurate types: task, request, work/errand, personal, project
+  - [ ] habits are completely separate, limited to 2, 21 streak = success
+  - [ ] ? what happens when day is over
+    - [ ] deferred, auto added to next day, add flag
+  - [ ] screen to plan new day
+    - [ ] deferred tasks
+    - [ ] select existing task/request/etc
+    - [ ] 4 slots max filled, 2 more empty
+  - [ ] things left behind?
+    - [ ] logging work on projects
+    - [ ] the importance strength meter
+- [ ] limit active projects to 2
+- [ ] ? limit requests?
+
+### Other
 - [x] edit tasks
 - [x] export button
-- [ ] checkboxes on home tab
 - [x] multistep: show deferred on right side minimized but still editable
 - [ ] clock for work/personal/weekend that switches view (every 5-10 minutes)
-- [ ] limit 2 projects
 - [ ] on refresh popup modal for "yesterday" tasks not yet logged with "dismiss" or "snooze" options
 - [ ] report tab with visualizations
 - [x] hide completed tasks after 1 day (tasks tab)
