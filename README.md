@@ -2,34 +2,50 @@
 
 A personal task-management app for one-time tasks, recurring habits, and multi-step projects. Built with Preact, TypeScript, Vite, and IndexedDB — everything runs client-side, no backend required.
 
-## About this project
+## Development approach
 
-This is a portfolio piece demonstrating **AI-assisted development**. The application was built end-to-end using [Claude Code](https://claude.com/claude-code) as a pair-programming tool — but "AI-assisted" here means *directed*, not *auto-generated*. I owned the architecture, the data model, the test strategy, and the review of every change. The sections below document both what the app does and **how I worked with an AI agent to build it well** — the guardrails I set, the decisions I made, and the workflow I followed. That workflow is the thing I'm actually showcasing.
+The app was built with AI-assisted development, using [Claude Code](https://claude.com/claude-code) as a design and pair-programming tool. Architecture, data model, test strategy, and design direction were set up front; the agent handled implementation within those constraints, and its output was reviewed before landing. The notes below cover both what the app does and how it was built.
 
-## How this was built with AI
+### Guardrails for the agent
 
-The goal wasn't to prove an AI can emit code — everyone knows it can. The goal was to show I can **drive an agent to a maintainable result**: making the architectural calls myself, constraining the agent where it needed constraining, and reviewing output rather than rubber-stamping it.
+The repo includes a [`CLAUDE.md`](CLAUDE.md) file — persistent project instructions the agent reads on every session. Its key rule is a **test-integrity policy**:
 
-### I set explicit guardrails for the agent
+> When a unit test fails, do **not** modify the test or the implementation to make it pass unless explicitly asked. Instead: report which test failed, investigate the root cause, propose options, and wait for go-ahead.
 
-The repo contains a [`CLAUDE.md`](CLAUDE.md) file — persistent project instructions the agent reads on every session. The most important rule in it is a **test-integrity policy**:
+This guards against a common failure mode of coding agents — "making the red go green" by deleting an assertion or weakening a check to force a pass. The policy redirects the agent from satisfying the test runner to surfacing the underlying problem.
 
-> When a unit test fails, do **not** modify the test or the implementation to make it pass unless I explicitly ask. Instead: report which test failed, investigate the root cause, propose options, and wait for go-ahead.
+### Design direction
 
-This exists because the default failure mode of an eager coding agent is to "make the red go green" — deleting an assertion or weakening a check to force a pass. That instruction flips the agent's behavior from *satisfy the test runner* to *surface the real problem to me*. Setting up that kind of guardrail is the difference between AI-assisted code you can trust and AI-assisted code you can't.
+#### Initial dashboard
+- Light theme, cool slate/neutral palette, Hanken Grotesk + Space Mono.
+- Work / Personal split via a toggle that filters the whole board.
+- Three task types in one list: simple to-dos, errands (filed under Work), and project current-steps (tagged with project name + step).
+- Starred tasks pinned to a highlighted group at the top.
+- Active Projects capped at 2, each with a progress bar and current step.
+- Habits shown with streak counts — build habits get a today checkmark; avoid ("don't do this") habits show Clean today / Logged yesterday.
+- Tweaks: accent color, hide-completed toggle.
 
-### I directed the architecture, the agent implemented it
+#### Night mode
+- Full dark palette derived from the light version (near-black page, raised dark cards, brighter periwinkle accent, darkened warm/green tints for pinned group and habit states).
+- Fixed low-contrast checkboxes/habit circles — borders switched to the text color so they read clearly on dark.
 
-The decisions that shape this codebase were mine, and I held the agent to them:
+#### Layout change and adjustments
+- Tasks and Habits stacked in the left column, each capped at a max-height (400px, later Tasks lowered to 300px) and independently scrollable; Active Projects alone in the right column.
+- Added a checkbox to each active project's current step (making it actionable like a task) plus an "on deck" preview of the next step.
+- Header status chips changed to explicit counts: "X of Y completed" (tasks) and "X of Y logged" (habits).
+
+### Architecture decisions
+
+Key decisions that shape the codebase:
 
 - **A single type-discriminated store** instead of separate tables per task type (see [Type hierarchy](#type-hierarchy)).
 - **`completedAt` as a nullable date string, not a boolean** — so the exact completion date is always recoverable.
 - **A single source of truth for display labels** (`DayNightLabel` in `src/types.ts`) so a label change is a one-line edit, not a find-and-replace.
 - **End-to-end tests over unit tests**, because all meaningful behavior in this app only exists in a browser context (see [Testing](#testing)).
 
-### I worked in a real Git workflow
+### Development workflow
 
-Development happened over ~2 weeks across feature branches merged via pull request (`new-ui`, `new-log-strategy`), not a single dump of generated code. Each branch was a coherent unit of work I reviewed before merging — the same discipline I'd apply on a team.
+Development happened over ~2 weeks across feature branches merged via pull request (`new-ui`, `new-log-strategy`), each a coherent unit of work reviewed before merging.
 
 ---
 
