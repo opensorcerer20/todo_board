@@ -2,9 +2,9 @@
 
 A personal task-management app for one-time tasks, recurring habits, and multi-step projects. Built with Preact, TypeScript, Vite, and IndexedDB — everything runs client-side, no backend required.
 
-> **About this project (for recruiters).** This is a portfolio piece demonstrating **AI-assisted development**. The application was built end-to-end using [Claude Code](https://claude.com/claude-code) as a pair-programming tool — but "AI-assisted" here means *directed*, not *auto-generated*. I owned the architecture, the data model, the test strategy, and the review of every change. The sections below document both what the app does and **how I worked with an AI agent to build it well** — the guardrails I set, the decisions I made, and the workflow I followed. That workflow is the thing I'm actually showcasing.
+## About this project
 
----
+This is a portfolio piece demonstrating **AI-assisted development**. The application was built end-to-end using [Claude Code](https://claude.com/claude-code) as a pair-programming tool — but "AI-assisted" here means *directed*, not *auto-generated*. I owned the architecture, the data model, the test strategy, and the review of every change. The sections below document both what the app does and **how I worked with an AI agent to build it well** — the guardrails I set, the decisions I made, and the workflow I followed. That workflow is the thing I'm actually showcasing.
 
 ## How this was built with AI
 
