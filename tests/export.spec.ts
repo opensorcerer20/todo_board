@@ -1,10 +1,7 @@
 import * as fs from 'fs';
 
-import {
-  expect,
-  type Page,
-  test,
-} from '@playwright/test';
+import { expect, test, DB_TEST_NAME } from './fixtures';
+import type { Page } from '@playwright/test';
 
 import {
   addMultistepProject,
@@ -143,8 +140,8 @@ test('export activity log is sorted newest first', async ({ page }) => {
   await page.locator('.task-card', { hasText: 'Old task' }).locator('input[type="checkbox"]').click();
 
   // Backdate the old task directly in IndexedDB
-  await page.evaluate(() => new Promise<void>((resolve, reject) => {
-    const req = indexedDB.open('task_board_v2', 1);
+  await page.evaluate((db) => new Promise<void>((resolve, reject) => {
+    const req = indexedDB.open(db);
     req.onsuccess = () => {
       const tx    = req.result.transaction('tasks', 'readwrite');
       const store = tx.objectStore('tasks');
@@ -161,7 +158,7 @@ test('export activity log is sorted newest first', async ({ page }) => {
       tx.onerror   = () => reject(tx.error);
     };
     req.onerror = () => reject(req.error);
-  }));
+  }), DB_TEST_NAME);
 
   const data = await captureDownloadJSON(page, () =>
     page.getByRole('button', { name: 'Export Activity Log' }).click()

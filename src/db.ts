@@ -2,11 +2,24 @@ import { DayNight, ItemType } from './types';
 import type { AnyTask, PlainTask, RequestTask, RepeatedTask, MultiStepProject } from './types';
 import { deepEqual } from './utils';
 
-const DB_NAME = 'task_board_v2';
+// Real database. A fresh, one-time name with the timestamp baked in at
+// code-write time — NOT computed per load, so the name is stable and data
+// persists across reloads. Started clean after the previous `task_board_v2`
+// database was wiped; backed-up data is re-imported into this one.
+export const DB_NAME = 'task_board_202607091451';
+
+// Fixed, always-separate database used only under test, so tests can never
+// read or overwrite the real DB. The app picks this up via an injected global
+// (see tests/fixtures.ts); production never sets it and uses DB_NAME.
+export const DB_TEST_NAME = 'task_board_test';
+
+function dbName(): string {
+  return (globalThis as unknown as { __TASKBOARD_DB__?: string }).__TASKBOARD_DB__ ?? DB_NAME;
+}
 
 export function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, 1);
+    const req = indexedDB.open(dbName(), 1);
     req.onupgradeneeded = () => {
       if (!req.result.objectStoreNames.contains('tasks'))
         req.result.createObjectStore('tasks', { keyPath: 'id', autoIncrement: true });

@@ -1,4 +1,5 @@
-import { test, expect, type Locator, type Page } from '@playwright/test';
+import { test, expect, DB_TEST_NAME } from './fixtures';
+import type { Locator, Page } from '@playwright/test';
 import { goToTab } from './helpers';
 import { ItemType } from '../src/types';
 
@@ -35,8 +36,8 @@ async function injectLogs(
   logs: { actionDate: string; recordedDate: string }[]
 ) {
   await page.evaluate(
-    ({ title, logs, repeatedType }) => new Promise<void>((resolve, reject) => {
-      const req = indexedDB.open('task_board_v2', 1);
+    ({ title, logs, repeatedType, db }) => new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open(db);
       req.onsuccess = () => {
         const tx = req.result.transaction('tasks', 'readwrite');
         const store = tx.objectStore('tasks');
@@ -54,7 +55,7 @@ async function injectLogs(
       };
       req.onerror = () => reject(req.error);
     }),
-    { title, logs, repeatedType: ItemType.REPEATED }
+    { title, logs, repeatedType: ItemType.REPEATED, db: DB_TEST_NAME }
   );
 }
 

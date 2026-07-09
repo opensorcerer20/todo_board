@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, DB_TEST_NAME } from './fixtures';
+import type { Page } from '@playwright/test';
 import { goToTab, addRepeatedTask } from './helpers';
 import { ItemType } from '../src/types';
 
@@ -29,8 +30,8 @@ type LogEntry = { actionDate: string; recordedDate: string };
 
 async function injectLogs(page: Page, title: string, logs: LogEntry[]) {
   await page.evaluate(
-    ({ title, logs, repeatedType }) => new Promise<void>((resolve, reject) => {
-      const req = indexedDB.open('task_board_v2', 1);
+    ({ title, logs, repeatedType, db }) => new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open(db);
       req.onsuccess = () => {
         const tx = req.result.transaction('tasks', 'readwrite');
         const store = tx.objectStore('tasks');
@@ -48,14 +49,14 @@ async function injectLogs(page: Page, title: string, logs: LogEntry[]) {
       };
       req.onerror = () => reject(req.error);
     }),
-    { title, logs, repeatedType: ItemType.REPEATED }
+    { title, logs, repeatedType: ItemType.REPEATED, db: DB_TEST_NAME }
   );
 }
 
 async function readTaskLogs(page: Page, title: string): Promise<LogEntry[]> {
   return page.evaluate(
-    ({ title, repeatedType }) => new Promise<LogEntry[]>((resolve, reject) => {
-      const req = indexedDB.open('task_board_v2', 1);
+    ({ title, repeatedType, db }) => new Promise<LogEntry[]>((resolve, reject) => {
+      const req = indexedDB.open(db);
       req.onsuccess = () => {
         const tx = req.result.transaction('tasks', 'readonly');
         const all = tx.objectStore('tasks').getAll();
@@ -70,7 +71,7 @@ async function readTaskLogs(page: Page, title: string): Promise<LogEntry[]> {
       };
       req.onerror = () => reject(req.error);
     }),
-    { title, repeatedType: ItemType.REPEATED }
+    { title, repeatedType: ItemType.REPEATED, db: DB_TEST_NAME }
   );
 }
 

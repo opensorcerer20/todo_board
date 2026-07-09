@@ -1,4 +1,5 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, DB_TEST_NAME } from './fixtures';
+import type { Page } from '@playwright/test';
 import { addTask } from './helpers';
 
 // ── "Second tab" helpers: mutate IndexedDB directly, bypassing the app ─────────
@@ -6,8 +7,8 @@ import { addTask } from './helpers';
 // Shallow-merge a patch onto the first record matching `title`.
 async function externalPatch(page: Page, title: string, patch: Record<string, unknown>) {
   await page.evaluate(
-    ({ title, patch }) => new Promise<void>((resolve, reject) => {
-      const req = indexedDB.open('task_board_v2', 1);
+    ({ title, patch, db }) => new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open(db);
       req.onsuccess = () => {
         const tx = req.result.transaction('tasks', 'readwrite');
         const store = tx.objectStore('tasks');
@@ -25,14 +26,14 @@ async function externalPatch(page: Page, title: string, patch: Record<string, un
       };
       req.onerror = () => reject(req.error);
     }),
-    { title, patch },
+    { title, patch, db: DB_TEST_NAME },
   );
 }
 
 async function externalDelete(page: Page, title: string) {
   await page.evaluate(
-    (title) => new Promise<void>((resolve, reject) => {
-      const req = indexedDB.open('task_board_v2', 1);
+    ({ title, db }) => new Promise<void>((resolve, reject) => {
+      const req = indexedDB.open(db);
       req.onsuccess = () => {
         const tx = req.result.transaction('tasks', 'readwrite');
         const store = tx.objectStore('tasks');
@@ -48,15 +49,15 @@ async function externalDelete(page: Page, title: string) {
       };
       req.onerror = () => reject(req.error);
     }),
-    title,
+    { title, db: DB_TEST_NAME },
   );
 }
 
 // Read the first record matching `title`, or null.
 async function readByTitle(page: Page, title: string) {
   return page.evaluate(
-    (title) => new Promise<Record<string, unknown> | null>((resolve, reject) => {
-      const req = indexedDB.open('task_board_v2', 1);
+    ({ title, db }) => new Promise<Record<string, unknown> | null>((resolve, reject) => {
+      const req = indexedDB.open(db);
       req.onsuccess = () => {
         const all = req.result.transaction('tasks', 'readonly').objectStore('tasks').getAll();
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -65,7 +66,7 @@ async function readByTitle(page: Page, title: string) {
       };
       req.onerror = () => reject(req.error);
     }),
-    title,
+    { title, db: DB_TEST_NAME },
   );
 }
 
