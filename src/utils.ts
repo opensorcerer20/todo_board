@@ -1,4 +1,4 @@
-import { DayNight } from './types';
+import { DayNight, ItemType } from './types';
 import type {
   AnyTask, LogEntry, PlainTask, RequestTask, RepeatedTask, MultiStepProject, MultistepTask, TaskType,
 } from './types';
@@ -46,17 +46,17 @@ export function multistepComplete(project: MultiStepProject): boolean {
 }
 
 // Typed factory — returns the correct Omit<T, 'id'> shape per type.
-export function makeTask(type: 'task',      overrides?: Partial<Omit<PlainTask,         'id' | 'type'>>): Omit<PlainTask,         'id'>;
-export function makeTask(type: 'request',   overrides?: Partial<Omit<RequestTask,       'id' | 'type'>>): Omit<RequestTask,       'id'>;
-export function makeTask(type: 'repeated',  overrides?: Partial<Omit<RepeatedTask,      'id' | 'type'>>): Omit<RepeatedTask,      'id'>;
-export function makeTask(type: 'multistep', overrides?: Partial<Omit<MultiStepProject,  'id' | 'type'>>): Omit<MultiStepProject,  'id'>;
+export function makeTask(type: typeof ItemType.TASK,      overrides?: Partial<Omit<PlainTask,         'id' | 'type'>>): Omit<PlainTask,         'id'>;
+export function makeTask(type: typeof ItemType.REQUEST,   overrides?: Partial<Omit<RequestTask,       'id' | 'type'>>): Omit<RequestTask,       'id'>;
+export function makeTask(type: typeof ItemType.REPEATED,  overrides?: Partial<Omit<RepeatedTask,      'id' | 'type'>>): Omit<RepeatedTask,      'id'>;
+export function makeTask(type: typeof ItemType.MULTISTEP, overrides?: Partial<Omit<MultiStepProject,  'id' | 'type'>>): Omit<MultiStepProject,  'id'>;
 export function makeTask(type: TaskType, overrides: Record<string, unknown> = {}): Record<string, unknown> {
   return { type, title: '', completedAt: null, createdAt: new Date().toISOString(), starred: false, dayNight: DayNight.NIGHT, deferred: false, ...overrides };
 }
 
 /** Build a new MultistepTask (step) with a UUID id. */
 export function newStep(title = ''): MultistepTask {
-  return { id: crypto.randomUUID(), type: 'task', title, completedAt: null, createdAt: new Date().toISOString(), starred: false, dayNight: DayNight.NIGHT, deferred: false };
+  return { id: crypto.randomUUID(), type: ItemType.TASK, title, completedAt: null, createdAt: new Date().toISOString(), starred: false, dayNight: DayNight.NIGHT, deferred: false };
 }
 
 // Re-export AnyTask so callers don't need to reach into types directly.
@@ -84,32 +84,49 @@ export function recalcActionDates(
 }
 
 export type ActivityEntry =
-  | { kind: 'task';  id: number;  title: string;  completedAt: string }
-  | { kind: 'step';  projectId: number; projectTitle: string; stepTitle: string; completedAt: string }
-  | { kind: 'habit'; id: number;  title: string;  logMode: 'today' | 'yesterday'; recordedDate: string; actionDate: string };
+  | { kind: typeof ItemType.TASK;    id: number;  title: string;  completedAt: string }
+  | { kind: typeof ItemType.REQUEST; id: number;  title: string;  completedAt: string }
+  | { kind: typeof ItemType.STEP;    projectId: number; projectTitle: string; stepTitle: string; completedAt: string }
+  | { kind: typeof ItemType.HABIT;   id: number;  title: string;  logMode: 'today' | 'yesterday'; recordedDate: string; actionDate: string };
 
 export function buildActivityLog(tasks: AnyTask[]): ActivityEntry[] {
   const entries: ActivityEntry[] = [];
 
   for (const t of tasks) {
-    if (t.type === 'task' && t.completedAt) {
-      entries.push({ kind: 'task', id: t.id as number, title: t.title, completedAt: t.completedAt });
-    } else if (t.type === 'multistep') {
-      for (const s of t.steps) {
-        if (s.completedAt) {
-          entries.push({ kind: 'step', projectId: t.id as number, projectTitle: t.title, stepTitle: s.title, completedAt: s.completedAt });
+    switch (t.type) {
+      case ItemType.TASK:
+        if (t.completedAt) {
+          entries.push({ kind: ItemType.TASK, id: t.id, title: t.title, completedAt: t.completedAt });
         }
-      }
-    } else if (t.type === 'repeated') {
-      for (const log of t.logs) {
-        entries.push({ kind: 'habit', id: t.id as number, title: t.title, logMode: t.logMode, recordedDate: log.recordedDate, actionDate: log.actionDate });
+        break;
+      case ItemType.REQUEST:
+        if (t.completedAt) {
+          entries.push({ kind: ItemType.REQUEST, id: t.id, title: t.title, completedAt: t.completedAt });
+        }
+        break;
+      case ItemType.MULTISTEP:
+        for (const s of t.steps) {
+          if (s.completedAt) {
+            entries.push({ kind: ItemType.STEP, projectId: t.id, projectTitle: t.title, stepTitle: s.title, completedAt: s.completedAt });
+          }
+        }
+        break;
+      case ItemType.REPEATED:
+        for (const log of t.logs) {
+          entries.push({ kind: ItemType.HABIT, id: t.id, title: t.title, logMode: t.logMode, recordedDate: log.recordedDate, actionDate: log.actionDate });
+        }
+        break;
+      default: {
+        // Exhaustiveness guard: a new AnyTask member left unhandled here is a compile error.
+        const _exhaustive: never = t;
+        void _exhaustive;
       }
     }
   }
 
   return entries.sort((a, b) => {
-    const dateA = a.kind === 'habit' ? a.recordedDate : a.completedAt;
-    const dateB = b.kind === 'habit' ? b.recordedDate : b.completedAt;
+    const dateA = a.kind === ItemType.HABIT ? a.recordedDate : a.completedAt;
+    const dateB = b.kind === ItemType.HABIT ? b.recordedDate : b.completedAt;
     return dateB.localeCompare(dateA);
   });
 }

@@ -14,15 +14,16 @@ import {
 } from './db';
 // import { runLegacyImport } from './legacyImport';
 import { buildActivityLog } from './utils';
+import { ItemType } from './types';
 import type { TaskType } from './types';
 
 type Tab = TaskType | 'home';
 
 const TABS: { id: Tab; label: string }[] = [
   { id: 'home',        label: 'Home' },
-  { id: 'task',        label: 'Tasks' },
-  { id: 'repeated',  label: 'Repeat Tasks' },
-  { id: 'multistep', label: 'Multistep' },
+  { id: ItemType.TASK,      label: 'Tasks' },
+  { id: ItemType.REPEATED,  label: 'Repeat Tasks' },
+  { id: ItemType.MULTISTEP, label: 'Multistep' },
 ];
 
 export default function App() {
@@ -104,13 +105,13 @@ export default function App() {
         {tab === 'home' && (
           db ? <HomeTab db={db} /> : <div className="empty-state">Loading…</div>
         )}
-        {tab === 'task' && (
+        {tab === ItemType.TASK && (
           db ? <TasksTab db={db} /> : <div className="empty-state">Loading…</div>
         )}
-        {tab === 'repeated' && (
+        {tab === ItemType.REPEATED && (
           db ? <RepeatedTasksTab db={db} /> : <div className="empty-state">Loading…</div>
         )}
-        {tab === 'multistep' && (
+        {tab === ItemType.MULTISTEP && (
           db ? <MultistepTab db={db} /> : <div className="empty-state">Loading…</div>
         )}
       </main>

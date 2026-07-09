@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { dbGetAll, dbAdd, dbPut, dbDelete } from '../db';
 import { makeTask, newStep, multistepComplete, todayStr } from '../utils';
-import { DayNight } from '../types';
+import { DayNight, ItemType } from '../types';
 import type { MultiStepProject, MultistepTask } from '../types';
 import { DayNightSelect, StarToggle } from './fields';
 import { DeleteButton } from './DeleteButton';
@@ -15,7 +15,7 @@ export default function MultistepTab({ db }: Props) {
   const [editing, setEditing]   = useState<MultiStepProject | null>(null);
   const { steps, setSteps, addStep, updateStep, removeStep, moveStep } = useStepManager([newStep()]);
 
-  const load = useCallback(() => dbGetAll(db, 'multistep').then(setTasks), [db]);
+  const load = useCallback(() => dbGetAll(db, ItemType.MULTISTEP).then(setTasks), [db]);
   useEffect(() => { load(); }, [load]);
 
   async function addTask(e: Event) {
@@ -25,7 +25,7 @@ export default function MultistepTab({ db }: Props) {
       .filter(s => s.title.trim())
       .map(s => ({ ...s, title: s.title.trim() }));
     if (!t || validSteps.length === 0) return;
-    await dbAdd(db, makeTask('multistep', { title: t, steps: validSteps, deferred }));
+    await dbAdd(db, makeTask(ItemType.MULTISTEP, { title: t, steps: validSteps, deferred }));
     setTitle('');
     setSteps([newStep()]);
     setDeferred(false);

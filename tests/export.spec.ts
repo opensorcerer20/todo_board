@@ -9,9 +9,11 @@ import {
 import {
   addMultistepProject,
   addRepeatedTask,
+  addRequest,
   addTask,
   goToTab,
 } from './helpers';
+import { ItemType } from '../src/types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -32,7 +34,7 @@ test('export JSON downloads a file containing all task records', async ({ page }
   ) as { title: string; type: string }[];
 
   expect(Array.isArray(data)).toBe(true);
-  expect(data.some(t => t.title === 'Export test task' && t.type === 'task')).toBe(true);
+  expect(data.some(t => t.title === 'Export test task' && t.type === ItemType.TASK)).toBe(true);
 });
 
 test('export JSON filename includes today\'s date', async ({ page }) => {
@@ -57,7 +59,22 @@ test('export activity log includes completed one-time task', async ({ page }) =>
     page.getByRole('button', { name: 'Export Activity Log' }).click()
   ) as { kind: string; title: string; completedAt: string }[];
 
-  const entry = data.find(e => e.kind === 'task' && e.title === 'Finished task');
+  const entry = data.find(e => e.kind === ItemType.TASK && e.title === 'Finished task');
+  expect(entry).toBeDefined();
+  expect(entry!.completedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+});
+
+test('export activity log includes completed request', async ({ page }) => {
+  await page.goto('/');
+  await addRequest(page, 'Finished request');
+  await goToTab(page, 'Tasks');
+  await page.locator('.task-card', { hasText: 'Finished request' }).locator('input[type="checkbox"]').click();
+
+  const data = await captureDownloadJSON(page, () =>
+    page.getByRole('button', { name: 'Export Activity Log' }).click()
+  ) as { kind: string; title: string; completedAt: string }[];
+
+  const entry = data.find(e => e.kind === ItemType.REQUEST && e.title === 'Finished request');
   expect(entry).toBeDefined();
   expect(entry!.completedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 });
@@ -72,7 +89,7 @@ test('export activity log includes completed multistep step', async ({ page }) =
     page.getByRole('button', { name: 'Export Activity Log' }).click()
   ) as { kind: string; stepTitle: string; projectTitle: string; completedAt: string }[];
 
-  const entry = data.find(e => e.kind === 'step' && e.stepTitle === 'Write tests');
+  const entry = data.find(e => e.kind === ItemType.STEP && e.stepTitle === 'Write tests');
   expect(entry).toBeDefined();
   expect(entry!.projectTitle).toBe('Build Feature');
   expect(entry!.completedAt).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -88,7 +105,7 @@ test('export activity log includes logged habit with logMode today', async ({ pa
     page.getByRole('button', { name: 'Export Activity Log' }).click()
   ) as { kind: string; title: string; logMode: string; recordedDate: string; actionDate: string }[];
 
-  const entry = data.find(e => e.kind === 'habit' && e.title === 'Morning run');
+  const entry = data.find(e => e.kind === ItemType.HABIT && e.title === 'Morning run');
   expect(entry).toBeDefined();
   expect(entry!.logMode).toBe('today');
   expect(entry!.recordedDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
@@ -108,7 +125,7 @@ test('export activity log includes logged habit with logMode yesterday', async (
     page.getByRole('button', { name: 'Export Activity Log' }).click()
   ) as { kind: string; title: string; logMode: string; recordedDate: string; actionDate: string }[];
 
-  const entry = data.find(e => e.kind === 'habit' && e.title === 'Evening journal');
+  const entry = data.find(e => e.kind === ItemType.HABIT && e.title === 'Evening journal');
   expect(entry).toBeDefined();
   expect(entry!.logMode).toBe('yesterday');
   // recordedDate should be yesterday, actionDate should be today

@@ -1,4 +1,4 @@
-import { DayNight } from './types';
+import { DayNight, ItemType } from './types';
 import type { AnyTask, PlainTask, RequestTask, RepeatedTask, MultiStepProject } from './types';
 
 const DB_NAME = 'task_board_v2';
@@ -15,10 +15,10 @@ export function openDB(): Promise<IDBDatabase> {
   });
 }
 
-export function dbGetAll(db: IDBDatabase, type: 'task'): Promise<PlainTask[]>;
-export function dbGetAll(db: IDBDatabase, type: 'request'): Promise<RequestTask[]>;
-export function dbGetAll(db: IDBDatabase, type: 'repeated'): Promise<RepeatedTask[]>;
-export function dbGetAll(db: IDBDatabase, type: 'multistep'): Promise<MultiStepProject[]>;
+export function dbGetAll(db: IDBDatabase, type: typeof ItemType.TASK): Promise<PlainTask[]>;
+export function dbGetAll(db: IDBDatabase, type: typeof ItemType.REQUEST): Promise<RequestTask[]>;
+export function dbGetAll(db: IDBDatabase, type: typeof ItemType.REPEATED): Promise<RepeatedTask[]>;
+export function dbGetAll(db: IDBDatabase, type: typeof ItemType.MULTISTEP): Promise<MultiStepProject[]>;
 export function dbGetAll(db: IDBDatabase, type: string): Promise<AnyTask[]> {
   return new Promise((res, rej) => {
     const req = db.transaction('tasks', 'readonly').objectStore('tasks').getAll();
@@ -59,13 +59,13 @@ export function migrateDB(db: IDBDatabase): Promise<void> {
         let changed = false;
 
         // Fields for task, request, and repeated types
-        if (r.type === 'task' || r.type === 'request' || r.type === 'repeated') {
+        if (r.type === ItemType.TASK || r.type === ItemType.REQUEST || r.type === ItemType.REPEATED) {
           if (r.starred === undefined) { r.starred = false; changed = true; }
           if (r.dayNight === undefined) { r.dayNight = DayNight.NIGHT; changed = true; }
         }
 
         // Fields for multistep projects and their steps
-        if (r.type === 'multistep') {
+        if (r.type === ItemType.MULTISTEP) {
           if (r.deferred === undefined) { r.deferred = false; changed = true; }
           const steps = r.steps as Record<string, unknown>[] | undefined;
           if (Array.isArray(steps)) {

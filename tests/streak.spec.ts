@@ -1,5 +1,6 @@
 import { test, expect, type Locator, type Page } from '@playwright/test';
 import { goToTab } from './helpers';
+import { ItemType } from '../src/types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -34,7 +35,7 @@ async function injectLogs(
   logs: { actionDate: string; recordedDate: string }[]
 ) {
   await page.evaluate(
-    ({ title, logs }) => new Promise<void>((resolve, reject) => {
+    ({ title, logs, repeatedType }) => new Promise<void>((resolve, reject) => {
       const req = indexedDB.open('task_board_v2', 1);
       req.onsuccess = () => {
         const tx = req.result.transaction('tasks', 'readwrite');
@@ -43,7 +44,7 @@ async function injectLogs(
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         all.onsuccess = () => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const task = (all.result as any[]).find(t => t.type === 'repeated' && t.title === title);
+          const task = (all.result as any[]).find(t => t.type === repeatedType && t.title === title);
           if (!task) { reject(new Error('task not found: ' + title)); return; }
           task.logs = logs;
           store.put(task);
@@ -53,7 +54,7 @@ async function injectLogs(
       };
       req.onerror = () => reject(req.error);
     }),
-    { title, logs }
+    { title, logs, repeatedType: ItemType.REPEATED }
   );
 }
 

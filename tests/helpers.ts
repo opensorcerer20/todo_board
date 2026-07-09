@@ -1,4 +1,5 @@
 import type { Page } from '@playwright/test';
+import { ItemType } from '../src/types';
 
 export function goToTab(page: Page, label: string) {
   return page.getByRole('button', { name: label, exact: true }).click();
@@ -12,7 +13,7 @@ export async function addTask(page: Page, title: string) {
 
 export async function addRequest(page: Page, title: string) {
   await goToTab(page, 'Tasks');
-  await page.locator('.add-form .form-group', { hasText: 'Type' }).locator('select').selectOption('request');
+  await page.locator('.add-form .form-group', { hasText: 'Type' }).locator('select').selectOption(ItemType.REQUEST);
   await page.getByPlaceholder('What needs to be done?').fill(title);
   await page.getByRole('button', { name: 'Add' }).click();
 }

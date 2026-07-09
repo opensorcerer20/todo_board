@@ -1,4 +1,25 @@
-export type TaskType = 'task' | 'request' | 'repeated' | 'multistep';
+/**
+ * Central source of truth for every item-type string used in the app.
+ *
+ * Two axes share this vocabulary:
+ *   • stored `type` discriminant — TASK, REQUEST, REPEATED, MULTISTEP
+ *   • activity-log `kind`        — TASK, STEP, HABIT (see ActivityEntry in utils.ts)
+ */
+export const ItemType = {
+  TASK:      'task',
+  REQUEST:   'request',
+  REPEATED:  'repeated',
+  MULTISTEP: 'multistep',
+  STEP:      'step',
+  HABIT:     'habit',
+} as const;
+
+/** The `type` discriminant stored on every top-level IndexedDB record. */
+export type TaskType =
+  | typeof ItemType.TASK
+  | typeof ItemType.REQUEST
+  | typeof ItemType.REPEATED
+  | typeof ItemType.MULTISTEP;
 
 export const DayNight = { DAY: 'day', NIGHT: 'night' } as const;
 export type DayNight = (typeof DayNight)[keyof typeof DayNight];
@@ -19,7 +40,7 @@ export interface SimpleTask {
 /** Embedded step inside a MultiStepProject. id is a UUID string. */
 export interface MultistepTask extends SimpleTask {
   id: string;
-  type: 'task';
+  type: typeof ItemType.TASK;
   deferred: boolean;
   starred: boolean;
   dayNight: DayNight;
@@ -27,7 +48,7 @@ export interface MultistepTask extends SimpleTask {
 
 export interface RepeatedTask extends SimpleTask {
   id: number;
-  type: 'repeated';
+  type: typeof ItemType.REPEATED;
   resetDay: 'daily' | number; // 0–6
   logMode: 'today' | 'yesterday';
   logs: LogEntry[];
@@ -37,7 +58,7 @@ export interface RepeatedTask extends SimpleTask {
 
 export interface MultiStepProject extends SimpleTask {
   id: number;
-  type: 'multistep';
+  type: typeof ItemType.MULTISTEP;
   deferred: boolean;
   steps: MultistepTask[];
 }
@@ -48,10 +69,10 @@ export interface LogEntry {
 }
 
 /** A plain top-level task stored directly in IndexedDB. */
-export type PlainTask = SimpleTask & { type: 'task'; id: number; starred: boolean; dayNight: DayNight };
+export type PlainTask = SimpleTask & { type: typeof ItemType.TASK; id: number; starred: boolean; dayNight: DayNight };
 
 /** A request / ask stored directly in IndexedDB. */
-export type RequestTask = SimpleTask & { type: 'request'; id: number; starred: boolean; dayNight: DayNight };
+export type RequestTask = SimpleTask & { type: typeof ItemType.REQUEST; id: number; starred: boolean; dayNight: DayNight };
 
 /** Discriminated union of all top-level IndexedDB records. */
 export type AnyTask = PlainTask | RequestTask | RepeatedTask | MultiStepProject;

@@ -1,0 +1,506 @@
+[
+  {
+    "id": 1781640516269,
+    "type": "task",
+    "title": "exchange co2",
+    "completedAt": "2026-06-17",
+    "createdAt": "2026-06-16T20:08:36.269Z",
+    "starred": false,
+    "dayNight": "night"
+  },
+  {
+    "id": 1781640521965,
+    "type": "task",
+    "title": "mow back",
+    "completedAt": "2026-06-18",
+    "createdAt": "2026-06-16T20:08:41.965Z",
+    "starred": true,
+    "dayNight": "night"
+  },
+  {
+    "id": 1781640544832,
+    "type": "repeated",
+    "title": "check to do board",
+    "completedAt": null,
+    "createdAt": "2026-06-16T20:09:04.832Z",
+    "resetDay": "daily",
+    "logMode": "today",
+    "logs": [
+      {
+        "actionDate": "2026-06-16",
+        "recordedDate": "2026-06-16"
+      },
+      {
+        "actionDate": "2026-06-17",
+        "recordedDate": "2026-06-17"
+      },
+      {
+        "actionDate": "2026-06-18",
+        "recordedDate": "2026-06-18"
+      },
+      {
+        "actionDate": "2026-06-19",
+        "recordedDate": "2026-06-19"
+      },
+      {
+        "actionDate": "2026-06-21",
+        "recordedDate": "2026-06-21"
+      },
+      {
+        "actionDate": "2026-06-23",
+        "recordedDate": "2026-06-23"
+      },
+      {
+        "actionDate": "2026-06-25",
+        "recordedDate": "2026-06-25"
+      },
+      {
+        "actionDate": "2026-06-28",
+        "recordedDate": "2026-06-28"
+      },
+      {
+        "actionDate": "2026-06-29",
+        "recordedDate": "2026-06-29"
+      },
+      {
+        "actionDate": "2026-06-30",
+        "recordedDate": "2026-06-30"
+      },
+      {
+        "actionDate": "2026-07-02",
+        "recordedDate": "2026-07-02"
+      }
+    ],
+    "starred": false,
+    "dayNight": "day"
+  },
+  {
+    "id": 1781640614632,
+    "type": "multistep",
+    "title": "job",
+    "completedAt": null,
+    "createdAt": "2026-06-16T20:10:14.632Z",
+    "deferred": false,
+    "steps": [
+      {
+        "id": "06756fc0-7b5b-4d9f-ae09-6fd185ca830b",
+        "type": "task",
+        "title": "get interview duds",
+        "completedAt": "2026-06-24",
+        "createdAt": "2026-06-16T20:10:14.632Z",
+        "starred": false,
+        "dayNight": "night",
+        "deferred": false
+      },
+      {
+        "id": "da86c715-568e-46d5-b05e-7f14b54ce515",
+        "type": "task",
+        "title": "get duds fitted",
+        "completedAt": "2026-06-24",
+        "createdAt": "2026-06-16T20:10:14.632Z",
+        "starred": false,
+        "dayNight": "day",
+        "deferred": false
+      },
+      {
+        "id": "e253c775-6045-4ff6-863d-f25e5736739e",
+        "type": "task",
+        "title": "dry cleaning",
+        "completedAt": "2026-06-24",
+        "createdAt": "2026-06-16T20:10:14.632Z",
+        "starred": true,
+        "dayNight": "day",
+        "deferred": false
+      },
+      {
+        "id": "7371fd00-73e5-4e24-97a5-10db594f9828",
+        "type": "task",
+        "title": "go to staffing",
+        "completedAt": null,
+        "createdAt": "2026-06-16T20:10:14.632Z",
+        "starred": true,
+        "dayNight": "day",
+        "deferred": false
+      },
+      {
+        "id": "2c308e8e-98a2-4e7b-bc6f-9ec509c37f53",
+        "type": "task",
+        "title": "get job",
+        "completedAt": null,
+        "createdAt": "2026-06-16T20:10:14.632Z",
+        "starred": false,
+        "dayNight": "day",
+        "deferred": false
+      },
+      {
+        "id": "0630dc44-9378-41d5-9560-23a548df02ba",
+        "type": "task",
+        "title": "follow dev job plan",
+        "completedAt": null,
+        "createdAt": "2026-06-16T20:10:14.632Z",
+        "starred": false,
+        "dayNight": "day",
+        "deferred": false
+      },
+      {
+        "id": "c0741f11-d454-4f07-bb4b-875a04fd0703",
+        "type": "task",
+        "title": "get dev job",
+        "completedAt": null,
+        "createdAt": "2026-06-16T20:10:14.632Z",
+        "starred": false,
+        "dayNight": "day",
+        "deferred": false
+      },
+      {
+        "id": "c225b6a5-360d-40e4-8068-2c9ddf271011",
+        "type": "task",
+        "title": "angle toward less dev heavy job",
+        "completedAt": null,
+        "createdAt": "2026-06-16T20:10:14.632Z",
+        "starred": false,
+        "dayNight": "night",
+        "deferred": false
+      }
+    ]
+  },
+  {
+    "id": 1781640861280,
+    "type": "multistep",
+    "title": "car",
+    "completedAt": null,
+    "createdAt": "2026-06-16T20:14:21.280Z",
+    "deferred": false,
+    "steps": [
+      {
+        "id": "5dde7aa0-bcbb-4275-a664-739a2b9257cc",
+        "type": "task",
+        "title": "call usaa for instructions",
+        "completedAt": "2026-06-24",
+        "createdAt": "2026-06-16T20:14:21.280Z",
+        "starred": false,
+        "dayNight": "night",
+        "deferred": false
+      },
+      {
+        "id": "5315ad75-88c0-4a43-be17-8f926bf2b9ab",
+        "type": "task",
+        "title": "appointment for car",
+        "completedAt": null,
+        "createdAt": "2026-06-16T20:14:21.280Z",
+        "starred": true,
+        "dayNight": "day",
+        "deferred": false
+      },
+      {
+        "id": "8c9f304d-88b9-4d6b-aa3e-fced567e4cc2",
+        "type": "task",
+        "title": "turo(?) rental",
+        "completedAt": null,
+        "createdAt": "2026-06-16T20:14:21.280Z",
+        "starred": false,
+        "dayNight": "day",
+        "deferred": false
+      },
+      {
+        "id": "a9d0fad2-f1d5-4300-a7db-42ab3b2721a4",
+        "type": "task",
+        "title": "take in car, get rental",
+        "completedAt": null,
+        "createdAt": "2026-06-16T20:14:21.280Z",
+        "starred": false,
+        "dayNight": "day",
+        "deferred": false
+      },
+      {
+        "id": "44750631-5eac-4be5-abe3-661131ee9310",
+        "type": "task",
+        "title": "when car is ready, reverse",
+        "completedAt": null,
+        "createdAt": "2026-06-16T20:14:21.280Z",
+        "starred": false,
+        "dayNight": "day",
+        "deferred": false
+      }
+    ]
+  },
+  {
+    "id": 1781670466791,
+    "type": "task",
+    "title": "dentist",
+    "completedAt": "2026-06-22",
+    "createdAt": "2026-06-17T04:27:46.791Z",
+    "starred": true,
+    "dayNight": "day"
+  },
+  {
+    "id": 1781693579074,
+    "type": "task",
+    "title": "add day/night to multistep",
+    "completedAt": "2026-06-18",
+    "createdAt": "2026-06-17T10:52:59.074Z",
+    "starred": false,
+    "dayNight": "day"
+  },
+  {
+    "id": 1781693596473,
+    "type": "task",
+    "title": "schedule adhd",
+    "completedAt": "2026-06-22",
+    "createdAt": "2026-06-17T10:53:16.473Z",
+    "starred": true,
+    "dayNight": "day"
+  },
+  {
+    "id": 1781693635590,
+    "type": "task",
+    "title": "add star option for tasks",
+    "completedAt": "2026-06-17",
+    "createdAt": "2026-06-17T10:53:55.590Z",
+    "starred": false,
+    "dayNight": "day"
+  },
+  {
+    "id": 1781697243130,
+    "type": "task",
+    "title": "temp: kohl for interview duds",
+    "completedAt": "2026-06-17",
+    "createdAt": "2026-06-17T11:54:03.130Z",
+    "starred": true,
+    "dayNight": "day"
+  },
+  {
+    "id": 1781701183301,
+    "type": "task",
+    "title": "body shaping academy",
+    "completedAt": "2026-06-17",
+    "createdAt": "2026-06-17T12:59:43.301Z",
+    "starred": true,
+    "dayNight": "day"
+  },
+  {
+    "id": 1782021940083,
+    "type": "multistep",
+    "title": "holographic book",
+    "completedAt": null,
+    "createdAt": "2026-06-21T06:05:40.083Z",
+    "deferred": true,
+    "steps": [
+      {
+        "id": "653ab29e-657f-4800-9e35-819437babcf0",
+        "type": "task",
+        "title": "approach as something characters discover",
+        "completedAt": null,
+        "createdAt": "2026-06-21T06:05:40.083Z",
+        "starred": false,
+        "dayNight": "night",
+        "deferred": false
+      },
+      {
+        "id": "6c15ed7b-16d3-43f8-998c-ccec7f370510",
+        "type": "task",
+        "title": "existing science",
+        "completedAt": null,
+        "createdAt": "2026-07-05T07:24:49.749Z",
+        "starred": false,
+        "dayNight": "night",
+        "deferred": false
+      },
+      {
+        "id": "1f89fa1b-2026-4f6b-977d-4a0d5ba5a20a",
+        "type": "task",
+        "title": "extending science toward secret",
+        "completedAt": null,
+        "createdAt": "2026-07-05T07:24:58.564Z",
+        "starred": false,
+        "dayNight": "night",
+        "deferred": false
+      }
+    ]
+  },
+  {
+    "id": 1782021974654,
+    "type": "task",
+    "title": "split off todo board into repo",
+    "completedAt": "2026-06-25",
+    "createdAt": "2026-06-21T06:06:14.654Z",
+    "starred": true,
+    "dayNight": "night"
+  },
+  {
+    "type": "request",
+    "title": "holographic rough plot",
+    "completedAt": null,
+    "createdAt": "2026-06-29T18:59:07.575Z",
+    "starred": false,
+    "dayNight": "night",
+    "deferred": false,
+    "id": 1782205283575
+  },
+  {
+    "type": "request",
+    "title": "langalong demo",
+    "completedAt": null,
+    "createdAt": "2026-06-29T18:59:19.073Z",
+    "starred": false,
+    "dayNight": "night",
+    "deferred": false,
+    "id": 1782205283576
+  },
+  {
+    "type": "request",
+    "title": "note taker app",
+    "completedAt": null,
+    "createdAt": "2026-06-29T19:00:00.337Z",
+    "starred": false,
+    "dayNight": "night",
+    "deferred": false,
+    "id": 1782205283577
+  },
+  {
+    "type": "task",
+    "title": "schedule car repair - get reincarnated sword from target",
+    "completedAt": null,
+    "createdAt": "2026-07-03T05:31:14.923Z",
+    "starred": false,
+    "dayNight": "night",
+    "deferred": false,
+    "id": 1782205283580
+  },
+  {
+    "type": "request",
+    "title": "hang tablet",
+    "completedAt": null,
+    "createdAt": "2026-07-05T06:47:17.394Z",
+    "starred": true,
+    "dayNight": "night",
+    "deferred": false,
+    "id": 1782205283581
+  },
+  {
+    "type": "request",
+    "title": "take pictures",
+    "completedAt": null,
+    "createdAt": "2026-07-05T06:47:36.478Z",
+    "starred": false,
+    "dayNight": "night",
+    "deferred": false,
+    "id": 1782205283582
+  },
+  {
+    "type": "task",
+    "title": "post project tracker",
+    "completedAt": null,
+    "createdAt": "2026-07-05T06:49:41.840Z",
+    "starred": true,
+    "dayNight": "day",
+    "deferred": false,
+    "id": 1782205283583
+  },
+  {
+    "type": "task",
+    "title": "post task board",
+    "completedAt": null,
+    "createdAt": "2026-07-05T06:50:05.050Z",
+    "starred": true,
+    "dayNight": "day",
+    "deferred": false,
+    "id": 1782205283584
+  },
+  {
+    "type": "multistep",
+    "title": "sell house",
+    "completedAt": null,
+    "createdAt": "2026-07-05T06:56:56.046Z",
+    "starred": false,
+    "dayNight": "night",
+    "deferred": false,
+    "steps": [
+      {
+        "id": "73c0ac94-9bd7-45c0-94f5-2b66a565b678",
+        "type": "task",
+        "title": "clean out boxes: July 19",
+        "completedAt": null,
+        "createdAt": "2026-07-05T06:54:21.592Z",
+        "starred": true,
+        "dayNight": "night",
+        "deferred": false
+      },
+      {
+        "id": "17a75f8a-9072-48c6-950e-009c45f4d402",
+        "type": "task",
+        "title": "unnecessary stuff out of house: July 26",
+        "completedAt": null,
+        "createdAt": "2026-07-05T06:54:50.010Z",
+        "starred": true,
+        "dayNight": "night",
+        "deferred": false
+      },
+      {
+        "id": "2afda223-5980-4757-b43c-56be775e0455",
+        "type": "task",
+        "title": "talk to realtor: August 4",
+        "completedAt": null,
+        "createdAt": "2026-07-05T06:55:32.107Z",
+        "starred": true,
+        "dayNight": "day",
+        "deferred": false
+      },
+      {
+        "id": "6b218a95-f4b4-4dbd-8cec-a0e2f5658f26",
+        "type": "task",
+        "title": "lawn service",
+        "completedAt": null,
+        "createdAt": "2026-07-05T06:55:07.216Z",
+        "starred": false,
+        "dayNight": "day",
+        "deferred": false
+      }
+    ],
+    "id": 1782205283585
+  },
+  {
+    "type": "multistep",
+    "title": "solar sales via ai",
+    "completedAt": null,
+    "createdAt": "2026-07-05T07:25:43.062Z",
+    "starred": false,
+    "dayNight": "night",
+    "deferred": true,
+    "steps": [
+      {
+        "id": "e4915fa2-7670-48e3-b4e5-5ede6ef9e821",
+        "type": "task",
+        "title": "see other doc for steps",
+        "completedAt": null,
+        "createdAt": "2026-07-05T07:23:42.169Z",
+        "starred": false,
+        "dayNight": "night",
+        "deferred": false
+      }
+    ],
+    "id": 1782205283586
+  },
+  {
+    "type": "multistep",
+    "title": "ci/cd",
+    "completedAt": null,
+    "createdAt": "2026-07-05T07:25:57.504Z",
+    "starred": false,
+    "dayNight": "night",
+    "deferred": true,
+    "steps": [
+      {
+        "id": "dbdb4bc4-a7a7-44ec-ad28-4c768cf98b3e",
+        "type": "task",
+        "title": "see other doc for steps",
+        "completedAt": null,
+        "createdAt": "2026-07-05T07:25:43.065Z",
+        "starred": false,
+        "dayNight": "night",
+        "deferred": false
+      }
+    ],
+    "id": 1782205283587
+  }
+]

@@ -12,7 +12,7 @@ import {
   dbPut,
 } from '../db';
 import type { PlainTask, RequestTask } from '../types';
-import { DayNight, DayNightLabel } from '../types';
+import { DayNight, DayNightLabel, ItemType } from '../types';
 import {
   DayNightSelect,
   StarToggle,
@@ -35,12 +35,12 @@ export default function TasksTab({ db }: Props) {
   const [title,     setTitle]     = useState('');
   const [starred,   setStarred]   = useState(false);
   const [dayNight,  setDayNight]  = useState<typeof DayNight[keyof typeof DayNight]>(DayNight.NIGHT);
-  const [taskKind,  setTaskKind]  = useState<'task' | 'request'>('task');
+  const [taskKind,  setTaskKind]  = useState<typeof ItemType.TASK | typeof ItemType.REQUEST>(ItemType.TASK);
   const [editing,   setEditing]   = useState<EditableTask | null>(null);
 
   const load = useCallback(() => Promise.all([
-    dbGetAll(db, 'task').then(setTasks),
-    dbGetAll(db, 'request').then(setRequests),
+    dbGetAll(db, ItemType.TASK).then(setTasks),
+    dbGetAll(db, ItemType.REQUEST).then(setRequests),
   ]), [db]);
   useEffect(() => { load(); }, [load]);
 
@@ -48,9 +48,9 @@ export default function TasksTab({ db }: Props) {
     e.preventDefault();
     const t = title.trim();
     if (!t) return;
-    const newItem = taskKind === 'request'
-      ? makeTask('request', { title: t, starred, dayNight })
-      : makeTask('task',    { title: t, starred, dayNight });
+    const newItem = taskKind === ItemType.REQUEST
+      ? makeTask(ItemType.REQUEST, { title: t, starred, dayNight })
+      : makeTask(ItemType.TASK,    { title: t, starred, dayNight });
     await dbAdd(db, newItem);
     setTitle('');
     setStarred(false);
@@ -89,9 +89,9 @@ export default function TasksTab({ db }: Props) {
         <div className="form-row">
           <div className="form-group">
             <label>Type</label>
-            <select value={taskKind} onChange={e => setTaskKind((e.target as HTMLSelectElement).value as 'task' | 'request')}>
-              <option value="task">Task</option>
-              <option value="request">Request</option>
+            <select value={taskKind} onChange={e => setTaskKind((e.target as HTMLSelectElement).value as typeof ItemType.TASK | typeof ItemType.REQUEST)}>
+              <option value={ItemType.TASK}>Task</option>
+              <option value={ItemType.REQUEST}>Request</option>
             </select>
           </div>
           <StarToggle starred={starred} onToggle={() => setStarred(p => !p)} style={{ alignSelf: 'flex-end' }} />
@@ -225,7 +225,7 @@ function EditModal({
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal-card" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
-          <span className="modal-title">Edit {task.type === 'request' ? 'Request' : 'Task'}</span>
+          <span className="modal-title">Edit {task.type === ItemType.REQUEST ? 'Request' : 'Task'}</span>
           <button className="btn-icon" onClick={onClose}>×</button>
         </div>
         <form onSubmit={submit}>

@@ -1,5 +1,6 @@
 import { test, expect, type Page } from '@playwright/test';
 import { goToTab, addRepeatedTask } from './helpers';
+import { ItemType } from '../src/types';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -28,7 +29,7 @@ type LogEntry = { actionDate: string; recordedDate: string };
 
 async function injectLogs(page: Page, title: string, logs: LogEntry[]) {
   await page.evaluate(
-    ({ title, logs }) => new Promise<void>((resolve, reject) => {
+    ({ title, logs, repeatedType }) => new Promise<void>((resolve, reject) => {
       const req = indexedDB.open('task_board_v2', 1);
       req.onsuccess = () => {
         const tx = req.result.transaction('tasks', 'readwrite');
@@ -37,7 +38,7 @@ async function injectLogs(page: Page, title: string, logs: LogEntry[]) {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         all.onsuccess = () => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const task = (all.result as any[]).find(t => t.type === 'repeated' && t.title === title);
+          const task = (all.result as any[]).find(t => t.type === repeatedType && t.title === title);
           if (!task) { reject(new Error('task not found: ' + title)); return; }
           task.logs = logs;
           store.put(task);
@@ -47,13 +48,13 @@ async function injectLogs(page: Page, title: string, logs: LogEntry[]) {
       };
       req.onerror = () => reject(req.error);
     }),
-    { title, logs }
+    { title, logs, repeatedType: ItemType.REPEATED }
   );
 }
 
 async function readTaskLogs(page: Page, title: string): Promise<LogEntry[]> {
   return page.evaluate(
-    (title) => new Promise<LogEntry[]>((resolve, reject) => {
+    ({ title, repeatedType }) => new Promise<LogEntry[]>((resolve, reject) => {
       const req = indexedDB.open('task_board_v2', 1);
       req.onsuccess = () => {
         const tx = req.result.transaction('tasks', 'readonly');
@@ -61,7 +62,7 @@ async function readTaskLogs(page: Page, title: string): Promise<LogEntry[]> {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         all.onsuccess = () => {
           // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          const task = (all.result as any[]).find(t => t.type === 'repeated' && t.title === title);
+          const task = (all.result as any[]).find(t => t.type === repeatedType && t.title === title);
           if (!task) { reject(new Error('task not found: ' + title)); return; }
           resolve(task.logs as LogEntry[]);
         };
@@ -69,7 +70,7 @@ async function readTaskLogs(page: Page, title: string): Promise<LogEntry[]> {
       };
       req.onerror = () => reject(req.error);
     }),
-    title
+    { title, repeatedType: ItemType.REPEATED }
   );
 }
 

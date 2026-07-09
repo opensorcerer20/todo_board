@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
 import { dbGetAll, dbAdd, dbPut, dbDelete } from '../db';
 import { canLog, recalcActionDates, resetLabel, todayStr, yesterdayStr, makeTask } from '../utils';
-import { DayNight, DayNightLabel } from '../types';
+import { DayNight, DayNightLabel, ItemType } from '../types';
 import type { RepeatedTask } from '../types';
 import {
   DayNightSelect,
@@ -24,14 +24,14 @@ export default function RepeatedTasksTab({ db }: Props) {
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [editing, setEditing]   = useState<RepeatedTask | null>(null);
 
-  const load = useCallback(() => dbGetAll(db, 'repeated').then(setTasks), [db]);
+  const load = useCallback(() => dbGetAll(db, ItemType.REPEATED).then(setTasks), [db]);
   useEffect(() => { load(); }, [load]);
 
   async function addTask(e: Event) {
     e.preventDefault();
     const t = title.trim();
     if (!t) return;
-    await dbAdd(db, makeTask('repeated', {
+    await dbAdd(db, makeTask(ItemType.REPEATED, {
       title: t,
       resetDay: resetDay === 'daily' ? 'daily' : parseInt(resetDay, 10),
       logMode,

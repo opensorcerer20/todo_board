@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'preact/hooks';
 import { dbGetAll } from '../db';
 import { canLog, resetLabel, todayStr } from '../utils';
-import { DayNight, DayNightLabel } from '../types';
+import { DayNight, DayNightLabel, ItemType } from '../types';
 import type { MultiStepProject, PlainTask, RequestTask, RepeatedTask } from '../types';
 
 interface Props { db: IDBDatabase }
@@ -112,10 +112,10 @@ export default function HomeTab({ db }: Props) {
   const [projects, setProjects] = useState<MultiStepProject[]>([]);
 
   const load = useCallback(() => Promise.all([
-    dbGetAll(db, 'task').then(setTasks),
-    dbGetAll(db, 'request').then(setRequests),
-    dbGetAll(db, 'repeated').then(setRepeated),
-    dbGetAll(db, 'multistep').then(setProjects),
+    dbGetAll(db, ItemType.TASK).then(setTasks),
+    dbGetAll(db, ItemType.REQUEST).then(setRequests),
+    dbGetAll(db, ItemType.REPEATED).then(setRepeated),
+    dbGetAll(db, ItemType.MULTISTEP).then(setProjects),
   ]), [db]);
 
   useEffect(() => { load(); }, [load]);
