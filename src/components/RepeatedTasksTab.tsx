@@ -1,6 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import { dbGetAll, dbAdd, dbPut, dbDelete } from '../db';
-import { canLog, recalcActionDates, resetLabel, todayStr, yesterdayStr, makeTask } from '../utils';
+import { useCallback, useEffect, useState } from 'preact/hooks';
+import { dbGetAll, dbAdd, dbApply, dbUpdateSafe, dbDelete } from '../db';
+import { canLog, changedFields, recalcActionDates, resetLabel, todayStr, yesterdayStr, makeTask } from '../utils';
 import { DayNight, DayNightLabel, ItemType } from '../types';
 import type { RepeatedTask } from '../types';
 import {
@@ -11,6 +11,7 @@ import {
   TitleInput,
 } from './fields';
 import { DeleteButton } from './DeleteButton';
+import { EditModalShell } from './EditModalShell';
 
 interface Props { db: IDBDatabase }
 
@@ -51,7 +52,8 @@ export default function RepeatedTasksTab({ db }: Props) {
     if (!canLog(task)) return;
     const today    = todayStr();
     const recorded = task.logMode === 'yesterday' ? yesterdayStr() : today;
-    await dbPut(db, { ...task, logs: [...task.logs, { actionDate: today, recordedDate: recorded }] });
+    const entry    = { actionDate: today, recordedDate: recorded };
+    await dbApply(db, task.id, (c: RepeatedTask) => ({ ...c, logs: [...c.logs, entry] }));
     load();
   }
 
@@ -60,12 +62,18 @@ export default function RepeatedTasksTab({ db }: Props) {
     load();
   }
 
+  // Throws ConflictError on collision; EditModalShell catches it to show a banner.
   async function saveEdit(patch: Pick<RepeatedTask, 'title' | 'starred' | 'dayNight' | 'resetDay' | 'logMode'>) {
     if (!editing) return;
-    const logs = patch.logMode !== editing.logMode
-      ? recalcActionDates(editing.logs, patch.logMode)
-      : editing.logs;
-    await dbPut(db, { ...editing, ...patch, logs });
+    // Changing logMode rewrites the whole logs array, so include it in the patch;
+    // if another tab appended a log meanwhile, this collides → conflict.
+    const full: Partial<RepeatedTask> = { ...patch };
+    if (patch.logMode !== editing.logMode) {
+      full.logs = recalcActionDates(editing.logs, patch.logMode);
+    }
+    const edits = changedFields(editing, full);
+    if (Object.keys(edits).length === 0) { setEditing(null); return; }
+    await dbUpdateSafe(db, editing, edits);
     setEditing(null);
     load();
   }
@@ -171,7 +179,7 @@ function EditRepeatModal({
   onClose,
 }: {
   task: RepeatedTask;
-  onSave: (patch: Pick<RepeatedTask, 'title' | 'starred' | 'dayNight' | 'resetDay' | 'logMode'>) => void;
+  onSave: (patch: Pick<RepeatedTask, 'title' | 'starred' | 'dayNight' | 'resetDay' | 'logMode'>) => Promise<void>;
   onClose: () => void;
 }) {
   const [title, setTitle]       = useState(task.title);
@@ -179,54 +187,27 @@ function EditRepeatModal({
   const [dayNight, setDayNight] = useState<DayNight>(task.dayNight ?? DayNight.NIGHT);
   const [resetDay, setResetDay] = useState(String(task.resetDay));
   const [logMode, setLogMode]   = useState<'today' | 'yesterday'>(task.logMode);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
-
-  function submit(e: Event) {
-    e.preventDefault();
-    const t = title.trim();
-    if (!t) return;
-    onSave({
-      title: t,
-      starred,
-      dayNight,
-      resetDay: resetDay === 'daily' ? 'daily' : parseInt(resetDay, 10),
-      logMode,
-    });
-  }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <span className="modal-title">Edit Repeat Task</span>
-          <button className="btn-icon" onClick={onClose}>×</button>
-        </div>
-        <form onSubmit={submit}>
-          <div className="form-row" style={{ marginBottom: 16 }}>
-            <StarToggle starred={starred} onToggle={() => setStarred(p => !p)} style={{ alignSelf: 'flex-end' }} />
-            <TitleInput value={title} onChange={setTitle} inputRef={inputRef} />
-            <ResetsSelect value={resetDay} onChange={setResetDay} />
-            <LogModeSelect value={logMode} onChange={setLogMode} />
-            <DayNightSelect value={dayNight} onChange={setDayNight} />
-          </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button type="button" className="btn" onClick={onClose} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary">Save</button>
-          </div>
-        </form>
+    <EditModalShell
+      title="Edit Repeat Task"
+      canSubmit={!!title.trim()}
+      onClose={onClose}
+      onSubmit={() => onSave({
+        title: title.trim(),
+        starred,
+        dayNight,
+        resetDay: resetDay === 'daily' ? 'daily' : parseInt(resetDay, 10),
+        logMode,
+      })}
+    >
+      <div className="form-row" style={{ marginBottom: 16 }}>
+        <StarToggle starred={starred} onToggle={() => setStarred(p => !p)} style={{ alignSelf: 'flex-end' }} />
+        <TitleInput value={title} onChange={setTitle} />
+        <ResetsSelect value={resetDay} onChange={setResetDay} />
+        <LogModeSelect value={logMode} onChange={setLogMode} />
+        <DayNightSelect value={dayNight} onChange={setDayNight} />
       </div>
-    </div>
+    </EditModalShell>
   );
 }

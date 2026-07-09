@@ -1,15 +1,15 @@
 import {
   useCallback,
   useEffect,
-  useRef,
   useState,
 } from 'preact/hooks';
 
 import {
   dbAdd,
+  dbApply,
   dbDelete,
   dbGetAll,
-  dbPut,
+  dbUpdateSafe,
 } from '../db';
 import type { PlainTask, RequestTask } from '../types';
 import { DayNight, DayNightLabel, ItemType } from '../types';
@@ -19,7 +19,9 @@ import {
   TitleInput,
 } from './fields';
 import { DeleteButton } from './DeleteButton';
+import { EditModalShell } from './EditModalShell';
 import {
+  changedFields,
   makeTask,
   todayStr,
   yesterdayStr,
@@ -59,7 +61,8 @@ export default function TasksTab({ db }: Props) {
   }
 
   async function toggle(task: EditableTask) {
-    await dbPut(db, { ...task, completedAt: task.completedAt ? null : todayStr() });
+    const completedAt = task.completedAt ? null : todayStr();
+    await dbApply(db, task.id, (c: EditableTask) => ({ ...c, completedAt }));
     load();
   }
 
@@ -68,9 +71,12 @@ export default function TasksTab({ db }: Props) {
     load();
   }
 
+  // Throws ConflictError on collision; EditModalShell catches it to show a banner.
   async function saveEdit(patch: Pick<EditableTask, 'title' | 'starred' | 'dayNight'>) {
     if (!editing) return;
-    await dbPut(db, { ...editing, ...patch });
+    const edits = changedFields(editing, patch);
+    if (Object.keys(edits).length === 0) { setEditing(null); return; }
+    await dbUpdateSafe(db, editing, edits);
     setEditing(null);
     load();
   }
@@ -195,53 +201,25 @@ function EditModal({
   onClose,
 }: {
   task: EditableTask;
-  onSave: (patch: Pick<EditableTask, 'title' | 'starred' | 'dayNight'>) => void;
+  onSave: (patch: Pick<EditableTask, 'title' | 'starred' | 'dayNight'>) => Promise<void>;
   onClose: () => void;
 }) {
   const [title, setTitle]       = useState(task.title);
   const [starred, setStarred]   = useState(task.starred);
   const [dayNight, setDayNight] = useState<typeof DayNight[keyof typeof DayNight]>(task.dayNight ?? DayNight.NIGHT);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
-
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
-
-  function submit(e: Event) {
-    e.preventDefault();
-    const t = title.trim();
-    if (!t) return;
-    onSave({ title: t, starred, dayNight });
-  }
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <span className="modal-title">Edit {task.type === ItemType.REQUEST ? 'Request' : 'Task'}</span>
-          <button className="btn-icon" onClick={onClose}>×</button>
-        </div>
-        <form onSubmit={submit}>
-          <div className="form-row" style={{ marginBottom: 16 }}>
-            <StarToggle starred={starred} onToggle={() => setStarred(p => !p)} style={{ alignSelf: 'flex-end' }} />
-            <TitleInput value={title} onChange={setTitle} inputRef={inputRef} />
-            <DayNightSelect value={dayNight} onChange={setDayNight} />
-          </div>
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-            <button type="button" className="btn" onClick={onClose} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary">Save</button>
-          </div>
-        </form>
+    <EditModalShell
+      title={`Edit ${task.type === ItemType.REQUEST ? 'Request' : 'Task'}`}
+      canSubmit={!!title.trim()}
+      onClose={onClose}
+      onSubmit={() => onSave({ title: title.trim(), starred, dayNight })}
+    >
+      <div className="form-row" style={{ marginBottom: 16 }}>
+        <StarToggle starred={starred} onToggle={() => setStarred(p => !p)} style={{ alignSelf: 'flex-end' }} />
+        <TitleInput value={title} onChange={setTitle} />
+        <DayNightSelect value={dayNight} onChange={setDayNight} />
       </div>
-    </div>
+    </EditModalShell>
   );
 }

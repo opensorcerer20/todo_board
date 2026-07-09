@@ -1,5 +1,6 @@
 import { DayNight, ItemType } from './types';
 import type { AnyTask, PlainTask, RequestTask, RepeatedTask, MultiStepProject } from './types';
+import { deepEqual } from './utils';
 
 const DB_NAME = 'task_board_v2';
 
@@ -35,11 +36,82 @@ export function dbAdd(db: IDBDatabase, item: Omit<AnyTask, 'id'>): Promise<numbe
   });
 }
 
-export function dbPut(db: IDBDatabase, item: AnyTask): Promise<number> {
-  return new Promise((res, rej) => {
-    const req = db.transaction('tasks', 'readwrite').objectStore('tasks').put(item);
-    req.onsuccess = () => res(req.result as number);
-    req.onerror = () => rej(req.error);
+/**
+ * Thrown by dbUpdateSafe when the stored record changed under an open edit
+ * modal. `fields` lists the colliding keys (empty = the record was deleted
+ * in another tab).
+ */
+export class ConflictError extends Error {
+  fields: string[];
+  constructor(fields: string[]) {
+    super(
+      fields.length
+        ? `Record changed in another tab (conflicting fields: ${fields.join(', ')})`
+        : 'Record was deleted in another tab',
+    );
+    this.name = 'ConflictError';
+    this.fields = fields;
+  }
+}
+
+/**
+ * Conflict-safe partial write for edit modals.
+ *
+ * Re-reads the current record inside the same readwrite transaction, diffs it
+ * against `original` (the snapshot captured when the modal opened), and:
+ *   • rejects with ConflictError if the record was deleted, or if any edited
+ *     field also changed externally (collision);
+ *   • otherwise writes only `edits` merged onto the current record, so
+ *     non-colliding external changes are preserved.
+ *
+ * The single transaction is what makes this race-free: IndexedDB serializes
+ * readwrite transactions across tabs.
+ */
+export function dbUpdateSafe<T extends AnyTask>(
+  db: IDBDatabase,
+  original: T,
+  edits: Partial<T>,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const store  = db.transaction('tasks', 'readwrite').objectStore('tasks');
+    const getReq = store.get(original.id);
+    getReq.onsuccess = () => {
+      const current = getReq.result as T | undefined;
+      if (!current) { reject(new ConflictError([])); return; }
+      const collisions = (Object.keys(edits) as (keyof T)[])
+        .filter(k => !deepEqual(current[k], original[k]));
+      if (collisions.length) { reject(new ConflictError(collisions as string[])); return; }
+      const merged = { ...current, ...edits };
+      const putReq = store.put(merged);
+      putReq.onsuccess = () => resolve(merged);
+      putReq.onerror   = () => reject(putReq.error);
+    };
+    getReq.onerror = () => reject(getReq.error);
+  });
+}
+
+/**
+ * Atomic read-modify-write for quick single-field writes (complete task, Log
+ * habit, complete step). The mutator builds on the freshest stored record, so
+ * these writes only touch their own field and never clobber a concurrent edit.
+ */
+export function dbApply<T extends AnyTask>(
+  db: IDBDatabase,
+  id: number | string,
+  mutate: (current: T) => T,
+): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const store  = db.transaction('tasks', 'readwrite').objectStore('tasks');
+    const getReq = store.get(id);
+    getReq.onsuccess = () => {
+      const current = getReq.result as T | undefined;
+      if (!current) { reject(new ConflictError([])); return; }
+      const next = mutate(current);
+      const putReq = store.put(next);
+      putReq.onsuccess = () => resolve(next);
+      putReq.onerror   = () => reject(putReq.error);
+    };
+    getReq.onerror = () => reject(getReq.error);
   });
 }
 

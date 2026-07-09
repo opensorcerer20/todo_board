@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef, useState } from 'preact/hooks';
-import { dbGetAll, dbAdd, dbPut, dbDelete } from '../db';
-import { makeTask, newStep, multistepComplete, todayStr } from '../utils';
+import { useCallback, useEffect, useState } from 'preact/hooks';
+import { dbGetAll, dbAdd, dbApply, dbUpdateSafe, dbDelete } from '../db';
+import { changedFields, makeTask, newStep, multistepComplete, todayStr } from '../utils';
 import { DayNight, ItemType } from '../types';
 import type { MultiStepProject, MultistepTask } from '../types';
 import { DayNightSelect, StarToggle } from './fields';
 import { DeleteButton } from './DeleteButton';
+import { EditModalShell } from './EditModalShell';
 
 interface Props { db: IDBDatabase }
 
@@ -33,12 +34,12 @@ export default function MultistepTab({ db }: Props) {
   }
 
   async function toggleStep(project: MultiStepProject, stepId: string) {
-    await dbPut(db, {
-      ...project,
-      steps: project.steps.map(s =>
-        s.id === stepId ? { ...s, completedAt: s.completedAt ? null : todayStr() } : s
-      ),
-    });
+    const step = project.steps.find(s => s.id === stepId);
+    const completedAt = step?.completedAt ? null : todayStr();
+    await dbApply(db, project.id, (c: MultiStepProject) => ({
+      ...c,
+      steps: c.steps.map(s => (s.id === stepId ? { ...s, completedAt } : s)),
+    }));
     load();
   }
 
@@ -47,9 +48,12 @@ export default function MultistepTab({ db }: Props) {
     load();
   }
 
+  // Throws ConflictError on collision; EditModalShell catches it to show a banner.
   async function saveEdit(patch: Pick<MultiStepProject, 'title' | 'deferred' | 'steps'>) {
     if (!editing) return;
-    await dbPut(db, { ...editing, ...patch });
+    const edits = changedFields(editing, patch);
+    if (Object.keys(edits).length === 0) { setEditing(null); return; }
+    await dbUpdateSafe(db, editing, edits);
     setEditing(null);
     load();
   }
@@ -244,78 +248,51 @@ function EditProjectModal({
   onClose,
 }: {
   project: MultiStepProject;
-  onSave: (patch: Pick<MultiStepProject, 'title' | 'deferred' | 'steps'>) => void;
+  onSave: (patch: Pick<MultiStepProject, 'title' | 'deferred' | 'steps'>) => Promise<void>;
   onClose: () => void;
 }) {
   const [title, setTitle]       = useState(project.title);
   const [deferred, setDeferred] = useState(project.deferred);
   const { steps, addStep, updateStep, removeStep, moveStep } = useStepManager(project.steps);
-  const inputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
-    function onKeyDown(e: KeyboardEvent) {
-      if (e.key === 'Escape') onClose();
-    }
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [onClose]);
-
-  function submit(e: Event) {
-    e.preventDefault();
-    const t = title.trim();
-    const validSteps = steps
-      .filter(s => s.title.trim())
-      .map(s => ({ ...s, title: s.title.trim() }));
-    if (!t || validSteps.length === 0) return;
-    onSave({ title: t, deferred, steps: validSteps });
-  }
+  const validSteps = steps
+    .filter(s => s.title.trim())
+    .map(s => ({ ...s, title: s.title.trim() }));
 
   return (
-    <div className="modal-backdrop" onClick={onClose}>
-      <div className="modal-card modal-card-lg" onClick={e => e.stopPropagation()}>
-        <div className="modal-header">
-          <span className="modal-title">Edit Multistep Task</span>
-          <button className="btn-icon" onClick={onClose}>×</button>
-        </div>
-        <form onSubmit={submit}>
-          <div className="form-row" style={{ marginBottom: 16 }}>
-            <div className="form-group grow">
-              <label>Task Name</label>
-              <input
-                ref={inputRef}
-                type="text"
-                value={title}
-                onInput={e => setTitle((e.target as HTMLInputElement).value)}
-              />
-            </div>
-            <label className="step-deferred-label" style={{ alignSelf: 'flex-end', paddingBottom: 8 }}>
-              <input
-                type="checkbox"
-                checked={deferred}
-                onChange={() => setDeferred(prev => !prev)}
-              />
-              Defer
-            </label>
-          </div>
-
-          <StepBuilder
-            steps={steps}
-            onAdd={addStep}
-            onUpdate={updateStep}
-            onRemove={removeStep}
-            onMove={moveStep}
+    <EditModalShell
+      title="Edit Multistep Task"
+      large
+      canSubmit={!!title.trim() && validSteps.length > 0}
+      onClose={onClose}
+      onSubmit={() => onSave({ title: title.trim(), deferred, steps: validSteps })}
+    >
+      <div className="form-row" style={{ marginBottom: 16 }}>
+        <div className="form-group grow">
+          <label>Task Name</label>
+          <input
+            type="text"
+            value={title}
+            onInput={e => setTitle((e.target as HTMLInputElement).value)}
           />
-
-          <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end', marginTop: 16 }}>
-            <button type="button" className="btn" onClick={onClose} style={{ background: 'var(--bg)', color: 'var(--text)' }}>
-              Cancel
-            </button>
-            <button type="submit" className="btn btn-primary">Save</button>
-          </div>
-        </form>
+        </div>
+        <label className="step-deferred-label" style={{ alignSelf: 'flex-end', paddingBottom: 8 }}>
+          <input
+            type="checkbox"
+            checked={deferred}
+            onChange={() => setDeferred(prev => !prev)}
+          />
+          Defer
+        </label>
       </div>
-    </div>
+
+      <StepBuilder
+        steps={steps}
+        onAdd={addStep}
+        onUpdate={updateStep}
+        onRemove={removeStep}
+        onMove={moveStep}
+      />
+    </EditModalShell>
   );
 }

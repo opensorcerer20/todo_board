@@ -7,6 +7,28 @@ export const DAY_NAMES = [
   'Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday',
 ];
 
+/**
+ * Value equality for record fields. Scalars compare with `===`; nested
+ * arrays/objects (e.g. `logs`, `steps`) compare by JSON shape. Order-sensitive
+ * by design — a reordered steps/logs array counts as a change.
+ */
+export function deepEqual(a: unknown, b: unknown): boolean {
+  if (a === b) return true;
+  return JSON.stringify(a) === JSON.stringify(b);
+}
+
+/**
+ * Returns only the keys of `patch` whose value differs from `original`.
+ * Used to write just the fields the user actually changed.
+ */
+export function changedFields<T extends object>(original: T, patch: Partial<T>): Partial<T> {
+  const out: Partial<T> = {};
+  for (const key of Object.keys(patch) as (keyof T)[]) {
+    if (!deepEqual(original[key], patch[key])) out[key] = patch[key];
+  }
+  return out;
+}
+
 function localDateStr(offset = 0): string {
   const d = new Date();
   d.setDate(d.getDate() + offset);
