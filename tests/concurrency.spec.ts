@@ -1,5 +1,10 @@
-import { test, expect, DB_TEST_NAME } from './fixtures';
 import type { Page } from '@playwright/test';
+
+import {
+  DB_TEST_NAME,
+  expect,
+  test,
+} from './fixtures';
 import { addTask } from './helpers';
 
 // ── "Second tab" helpers: mutate IndexedDB directly, bypassing the app ─────────

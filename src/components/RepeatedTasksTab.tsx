@@ -1,8 +1,33 @@
-import { useCallback, useEffect, useState } from 'preact/hooks';
-import { dbGetAll, dbAdd, dbApply, dbUpdateSafe, dbDelete } from '../db';
-import { canLog, changedFields, recalcActionDates, resetLabel, todayStr, yesterdayStr, makeTask } from '../utils';
-import { DayNight, DayNightLabel, ItemType } from '../types';
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from 'preact/hooks';
+
+import {
+  dbAdd,
+  dbApplyLogged,
+  dbDelete,
+  dbGetAll,
+  dbUpdateSafe,
+} from '../db';
 import type { RepeatedTask } from '../types';
+import {
+  DayNight,
+  DayNightLabel,
+  ItemType,
+} from '../types';
+import {
+  canLog,
+  changedFields,
+  makeTask,
+  recalcActionDates,
+  resetLabel,
+  todayStr,
+  yesterdayStr,
+} from '../utils';
+import { DeleteButton } from './DeleteButton';
+import { EditModalShell } from './EditModalShell';
 import {
   DayNightSelect,
   LogModeSelect,
@@ -10,8 +35,6 @@ import {
   StarToggle,
   TitleInput,
 } from './fields';
-import { DeleteButton } from './DeleteButton';
-import { EditModalShell } from './EditModalShell';
 
 interface Props { db: IDBDatabase }
 
@@ -53,7 +76,21 @@ export default function RepeatedTasksTab({ db }: Props) {
     const today    = todayStr();
     const recorded = task.logMode === 'yesterday' ? yesterdayStr() : today;
     const entry    = { actionDate: today, recordedDate: recorded };
-    await dbApply(db, task.id, (c: RepeatedTask) => ({ ...c, logs: [...c.logs, entry] }));
+    // @todo consider passing data without needing to know shape
+    await dbApplyLogged(
+      db,
+      task.id,
+      (c: RepeatedTask) => ({ ...c, logs: [...c.logs, entry] }),
+      (before) => ({
+        at: new Date().toISOString(),
+        kind: ItemType.HABIT,
+        action: 'logged',
+        itemId: before.id,
+        title: before.title,
+        actionDate: entry.actionDate,
+        recordedDate: entry.recordedDate,
+      }),
+    );
     load();
   }
 

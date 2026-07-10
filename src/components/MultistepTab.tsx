@@ -1,11 +1,37 @@
-import { useCallback, useEffect, useState } from 'preact/hooks';
-import { dbGetAll, dbAdd, dbApply, dbUpdateSafe, dbDelete } from '../db';
-import { changedFields, makeTask, newStep, multistepComplete, todayStr } from '../utils';
-import { DayNight, ItemType } from '../types';
-import type { MultiStepProject, MultistepTask } from '../types';
-import { DayNightSelect, StarToggle } from './fields';
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from 'preact/hooks';
+
+import {
+  dbAdd,
+  dbApplyLogged,
+  dbDelete,
+  dbGetAll,
+  dbUpdateSafe,
+} from '../db';
+import type {
+  MultiStepProject,
+  MultistepTask,
+} from '../types';
+import {
+  DayNight,
+  ItemType,
+} from '../types';
+import {
+  changedFields,
+  makeTask,
+  multistepComplete,
+  newStep,
+  todayStr,
+} from '../utils';
 import { DeleteButton } from './DeleteButton';
 import { EditModalShell } from './EditModalShell';
+import {
+  DayNightSelect,
+  StarToggle,
+} from './fields';
 
 interface Props { db: IDBDatabase }
 
@@ -34,12 +60,27 @@ export default function MultistepTab({ db }: Props) {
   }
 
   async function toggleStep(project: MultiStepProject, stepId: string) {
-    const step = project.steps.find(s => s.id === stepId);
-    const completedAt = step?.completedAt ? null : todayStr();
-    await dbApply(db, project.id, (c: MultiStepProject) => ({
-      ...c,
-      steps: c.steps.map(s => (s.id === stepId ? { ...s, completedAt } : s)),
-    }));
+    // @todo consider passing data without needing to know shape
+    await dbApplyLogged(
+      db,
+      project.id,
+      (c: MultiStepProject) => ({
+        ...c,
+        steps: c.steps.map(s => (s.id === stepId ? { ...s, completedAt: s.completedAt ? null : todayStr() } : s)),
+      }),
+      (before) => {
+        const step = before.steps.find(s => s.id === stepId);
+        return {
+          at: new Date().toISOString(),
+          kind: ItemType.STEP,
+          action: step?.completedAt ? 'uncompleted' : 'completed',
+          itemId: stepId,
+          title: step?.title ?? '',
+          projectId: before.id,
+          projectTitle: before.title,
+        };
+      },
+    );
     load();
   }
 
@@ -255,17 +296,18 @@ function EditProjectModal({
   const [deferred, setDeferred] = useState(project.deferred);
   const { steps, addStep, updateStep, removeStep, moveStep } = useStepManager(project.steps);
 
-  const validSteps = steps
-    .filter(s => s.title.trim())
-    .map(s => ({ ...s, title: s.title.trim() }));
+  // Keep every step (preserving completedAt and other data) — blanking a title
+  // must not silently drop a step. Removal is explicit via the × button.
+  const trimmedSteps = steps.map(s => ({ ...s, title: s.title.trim() }));
+  const allStepsTitled = trimmedSteps.every(s => s.title !== '');
 
   return (
     <EditModalShell
       title="Edit Multistep Task"
       large
-      canSubmit={!!title.trim() && validSteps.length > 0}
+      canSubmit={!!title.trim() && trimmedSteps.length > 0 && allStepsTitled}
       onClose={onClose}
-      onSubmit={() => onSave({ title: title.trim(), deferred, steps: validSteps })}
+      onSubmit={() => onSave({ title: title.trim(), deferred, steps: trimmedSteps })}
     >
       <div className="form-row" style={{ marginBottom: 16 }}>
         <div className="form-group grow">
@@ -293,6 +335,12 @@ function EditProjectModal({
         onRemove={removeStep}
         onMove={moveStep}
       />
+
+      {!allStepsTitled && (
+        <div style={{ color: 'var(--warning)', fontSize: 13, marginTop: 8 }}>
+          Every step needs a title. Use ✕ to remove a step.
+        </div>
+      )}
     </EditModalShell>
   );
 }

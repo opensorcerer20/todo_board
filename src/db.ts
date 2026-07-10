@@ -1,6 +1,19 @@
-import { DayNight, ItemType } from './types';
-import type { AnyTask, PlainTask, RequestTask, RepeatedTask, MultiStepProject } from './types';
-import { deepEqual } from './utils';
+import type {
+  ActivityEvent,
+  AnyTask,
+  MultiStepProject,
+  PlainTask,
+  RepeatedTask,
+  RequestTask,
+} from './types';
+import {
+  DayNight,
+  ItemType,
+} from './types';
+import {
+  activitySeedEvents,
+  deepEqual,
+} from './utils';
 
 // Real database. A fresh, one-time name with the timestamp baked in at
 // code-write time — NOT computed per load, so the name is stable and data
@@ -17,12 +30,25 @@ function dbName(): string {
   return (globalThis as unknown as { __TASKBOARD_DB__?: string }).__TASKBOARD_DB__ ?? DB_NAME;
 }
 
+const DB_VERSION = 2;
+
 export function openDB(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
-    const req = indexedDB.open(dbName(), 1);
+    const req = indexedDB.open(dbName(), DB_VERSION);
+
     req.onupgradeneeded = () => {
-      if (!req.result.objectStoreNames.contains('tasks'))
-        req.result.createObjectStore('tasks', { keyPath: 'id', autoIncrement: true });
+      const db = req.result;
+      if (!db.objectStoreNames.contains('tasks'))
+        db.createObjectStore('tasks', { keyPath: 'id', autoIncrement: true });
+
+      // v2: append-only activity log, seeded once from existing completion state.
+      if (!db.objectStoreNames.contains('activity')) {
+        const activity = db.createObjectStore('activity', { keyPath: 'id', autoIncrement: true });
+        const getAll = req.transaction!.objectStore('tasks').getAll();
+        getAll.onsuccess = () => {
+          for (const ev of activitySeedEvents(getAll.result as AnyTask[])) activity.add(ev);
+        };
+      }
     };
     req.onsuccess = () => resolve(req.result);
     req.onerror = () => reject(req.error);
@@ -104,27 +130,46 @@ export function dbUpdateSafe<T extends AnyTask>(
 }
 
 /**
- * Atomic read-modify-write for quick single-field writes (complete task, Log
- * habit, complete step). The mutator builds on the freshest stored record, so
- * these writes only touch their own field and never clobber a concurrent edit.
+ * Atomic read-modify-write for the completion actions (complete/uncomplete a
+ * task or step, log a habit), plus an append to the activity log — both in one
+ * readwrite transaction over `tasks` + `activity`. The mutator builds on the
+ * freshest stored record (never clobbering a concurrent edit); `makeEvent`
+ * receives that record and returns the event to append.
  */
-export function dbApply<T extends AnyTask>(
+export function dbApplyLogged<T extends AnyTask>(
   db: IDBDatabase,
   id: number | string,
   mutate: (current: T) => T,
+  makeEvent: (before: T) => Omit<ActivityEvent, 'id'>,
 ): Promise<T> {
   return new Promise((resolve, reject) => {
-    const store  = db.transaction('tasks', 'readwrite').objectStore('tasks');
-    const getReq = store.get(id);
+    const tx       = db.transaction(['tasks', 'activity'], 'readwrite');
+    const tasks    = tx.objectStore('tasks');
+    const activity = tx.objectStore('activity');
+    const getReq   = tasks.get(id);
     getReq.onsuccess = () => {
-      const current = getReq.result as T | undefined;
-      if (!current) { reject(new ConflictError([])); return; }
-      const next = mutate(current);
-      const putReq = store.put(next);
-      putReq.onsuccess = () => resolve(next);
-      putReq.onerror   = () => reject(putReq.error);
+      const before = getReq.result as T | undefined;
+      if (!before) { reject(new ConflictError([])); return; }
+      const next = mutate(before);
+      tasks.put(next);
+      activity.add(makeEvent(before));
+      tx.oncomplete = () => resolve(next);
+      tx.onerror    = () => reject(tx.error);
     };
     getReq.onerror = () => reject(getReq.error);
+  });
+}
+
+/** Reads the full append-only activity log, oldest event first. */
+export function dbGetActivity(db: IDBDatabase): Promise<ActivityEvent[]> {
+  return new Promise((resolve, reject) => {
+    const req = db.transaction('activity', 'readonly').objectStore('activity').getAll();
+    req.onsuccess = () => {
+      const events = req.result as ActivityEvent[];
+      events.sort((a, b) => a.at.localeCompare(b.at) || a.id - b.id);
+      resolve(events);
+    };
+    req.onerror = () => reject(req.error);
   });
 }
 

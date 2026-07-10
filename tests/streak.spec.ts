@@ -1,7 +1,15 @@
-import { test, expect, DB_TEST_NAME } from './fixtures';
-import type { Locator, Page } from '@playwright/test';
-import { goToTab } from './helpers';
+import type {
+  Locator,
+  Page,
+} from '@playwright/test';
+
 import { ItemType } from '../src/types';
+import {
+  DB_TEST_NAME,
+  expect,
+  test,
+} from './fixtures';
+import { goToTab } from './helpers';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 

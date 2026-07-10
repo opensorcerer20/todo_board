@@ -1,6 +1,6 @@
 import { DayNight, ItemType } from './types';
 import type {
-  AnyTask, LogEntry, PlainTask, RequestTask, RepeatedTask, MultiStepProject, MultistepTask, TaskType,
+  ActivityEvent, AnyTask, LogEntry, PlainTask, RequestTask, RepeatedTask, MultiStepProject, MultistepTask, TaskType,
 } from './types';
 
 export const DAY_NAMES = [
@@ -105,37 +105,38 @@ export function recalcActionDates(
   }));
 }
 
-export type ActivityEntry =
-  | { kind: typeof ItemType.TASK;    id: number;  title: string;  completedAt: string }
-  | { kind: typeof ItemType.REQUEST; id: number;  title: string;  completedAt: string }
-  | { kind: typeof ItemType.STEP;    projectId: number; projectTitle: string; stepTitle: string; completedAt: string }
-  | { kind: typeof ItemType.HABIT;   id: number;  title: string;  logMode: 'today' | 'yesterday'; recordedDate: string; actionDate: string };
-
-export function buildActivityLog(tasks: AnyTask[]): ActivityEntry[] {
-  const entries: ActivityEntry[] = [];
+/**
+ * One-time seed for the append-only activity store: derives the events implied
+ * by the current completion state (completed tasks/steps, habit logs). Used only
+ * during the v1→v2 upgrade; afterward the store is append-only via dbApplyLogged.
+ */
+export function activitySeedEvents(tasks: AnyTask[]): Omit<ActivityEvent, 'id'>[] {
+  const events: Omit<ActivityEvent, 'id'>[] = [];
 
   for (const t of tasks) {
     switch (t.type) {
       case ItemType.TASK:
-        if (t.completedAt) {
-          entries.push({ kind: ItemType.TASK, id: t.id, title: t.title, completedAt: t.completedAt });
-        }
-        break;
       case ItemType.REQUEST:
         if (t.completedAt) {
-          entries.push({ kind: ItemType.REQUEST, id: t.id, title: t.title, completedAt: t.completedAt });
+          events.push({ at: t.completedAt, kind: t.type, action: 'completed', itemId: t.id, title: t.title });
         }
         break;
       case ItemType.MULTISTEP:
         for (const s of t.steps) {
           if (s.completedAt) {
-            entries.push({ kind: ItemType.STEP, projectId: t.id, projectTitle: t.title, stepTitle: s.title, completedAt: s.completedAt });
+            events.push({
+              at: s.completedAt, kind: ItemType.STEP, action: 'completed',
+              itemId: s.id, title: s.title, projectId: t.id, projectTitle: t.title,
+            });
           }
         }
         break;
       case ItemType.REPEATED:
         for (const log of t.logs) {
-          entries.push({ kind: ItemType.HABIT, id: t.id, title: t.title, logMode: t.logMode, recordedDate: log.recordedDate, actionDate: log.actionDate });
+          events.push({
+            at: log.actionDate, kind: ItemType.HABIT, action: 'logged',
+            itemId: t.id, title: t.title, actionDate: log.actionDate, recordedDate: log.recordedDate,
+          });
         }
         break;
       default: {
@@ -146,9 +147,5 @@ export function buildActivityLog(tasks: AnyTask[]): ActivityEntry[] {
     }
   }
 
-  return entries.sort((a, b) => {
-    const dateA = a.kind === ItemType.HABIT ? a.recordedDate : a.completedAt;
-    const dateB = b.kind === ItemType.HABIT ? b.recordedDate : b.completedAt;
-    return dateB.localeCompare(dateA);
-  });
+  return events.sort((a, b) => a.at.localeCompare(b.at));
 }

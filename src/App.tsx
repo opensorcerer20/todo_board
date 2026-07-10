@@ -9,11 +9,11 @@ import RepeatedTasksTab from './components/RepeatedTasksTab';
 import TasksTab from './components/TasksTab';
 import {
   dbExportAll,
+  dbGetActivity,
   migrateDB,
   openDB,
 } from './db';
 // import { runLegacyImport } from './legacyImport';
-import { buildActivityLog } from './utils';
 import { ItemType } from './types';
 import type { TaskType } from './types';
 
@@ -59,8 +59,7 @@ export default function App() {
 
   function handleExportActivity() {
     if (!db) return;
-    dbExportAll(db).then(data => {
-      const log  = buildActivityLog(data);
+    dbGetActivity(db).then(log => {
       const blob = new Blob([JSON.stringify(log, null, 2)], { type: 'application/json' });
       const url  = URL.createObjectURL(blob);
       const a    = document.createElement('a');

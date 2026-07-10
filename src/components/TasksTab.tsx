@@ -6,26 +6,33 @@ import {
 
 import {
   dbAdd,
-  dbApply,
+  dbApplyLogged,
   dbDelete,
   dbGetAll,
   dbUpdateSafe,
 } from '../db';
-import type { PlainTask, RequestTask } from '../types';
-import { DayNight, DayNightLabel, ItemType } from '../types';
+import type {
+  PlainTask,
+  RequestTask,
+} from '../types';
 import {
-  DayNightSelect,
-  StarToggle,
-  TitleInput,
-} from './fields';
-import { DeleteButton } from './DeleteButton';
-import { EditModalShell } from './EditModalShell';
+  DayNight,
+  DayNightLabel,
+  ItemType,
+} from '../types';
 import {
   changedFields,
   makeTask,
   todayStr,
   yesterdayStr,
 } from '../utils';
+import { DeleteButton } from './DeleteButton';
+import { EditModalShell } from './EditModalShell';
+import {
+  DayNightSelect,
+  StarToggle,
+  TitleInput,
+} from './fields';
 
 type EditableTask = PlainTask | RequestTask;
 
@@ -61,8 +68,19 @@ export default function TasksTab({ db }: Props) {
   }
 
   async function toggle(task: EditableTask) {
-    const completedAt = task.completedAt ? null : todayStr();
-    await dbApply(db, task.id, (c: EditableTask) => ({ ...c, completedAt }));
+    // @todo consider passing data without needing to know shape
+    await dbApplyLogged(
+      db,
+      task.id,
+      (c: EditableTask) => ({ ...c, completedAt: c.completedAt ? null : todayStr() }),
+      (before) => ({
+        at: new Date().toISOString(),
+        kind: before.type,
+        action: before.completedAt ? 'uncompleted' : 'completed',
+        itemId: before.id,
+        title: before.title,
+      }),
+    );
     load();
   }
 

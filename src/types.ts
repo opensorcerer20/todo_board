@@ -76,3 +76,27 @@ export type RequestTask = SimpleTask & { type: typeof ItemType.REQUEST; id: numb
 
 /** Discriminated union of all top-level IndexedDB records. */
 export type AnyTask = PlainTask | RequestTask | RepeatedTask | MultiStepProject;
+
+/**
+ * An entry in the append-only activity log (the `activity` object store).
+ * Events are only ever appended — never updated or deleted — so `title` is a
+ * snapshot taken at the moment of the action, immune to later renames/deletes.
+ */
+export type ActivityAction = 'completed' | 'uncompleted' | 'logged';
+
+export interface ActivityEvent {
+  id: number;                 // autoIncrement key
+  at: string;                 // ISO timestamp of the action (YYYY-MM-DD for seeded history)
+  kind:
+    | typeof ItemType.TASK
+    | typeof ItemType.REQUEST
+    | typeof ItemType.STEP
+    | typeof ItemType.HABIT;
+  action: ActivityAction;
+  itemId: number | string;    // step events use the step's UUID
+  title: string;
+  projectId?: number;         // step events
+  projectTitle?: string;      // step events
+  actionDate?: string;        // habit logs
+  recordedDate?: string;      // habit logs
+}

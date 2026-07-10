@@ -137,6 +137,37 @@ test('can add a step via multistep edit modal', async ({ page }) => {
   await expect(card.locator('.badge', { hasText: '0/2' })).toBeVisible();
 });
 
+test('blanking a step title blocks save (no silent delete)', async ({ page }) => {
+  await addMultistepProject(page, 'Guard Project', ['Alpha', 'Beta']);
+  await page.locator('.task-card', { hasText: 'Guard Project' }).getByTitle('Edit').click();
+
+  // Clear the second step's title.
+  await page.locator('.modal-card .step-builder-row input').nth(1).fill('');
+
+  await expect(page.getByRole('button', { name: 'Save' })).toBeDisabled();
+  await expect(page.getByText('Every step needs a title', { exact: false })).toBeVisible();
+});
+
+test('editing a project preserves a completed step', async ({ page }) => {
+  await addMultistepProject(page, 'History Project', ['Alpha', 'Beta']);
+  const card = page.locator('.task-card', { hasText: 'History Project' });
+
+  // Complete the Beta step from the list.
+  await card.locator('.step-item', { hasText: 'Beta' }).locator('input[type="checkbox"]').check();
+  await expect(card.locator('.step-item', { hasText: 'Beta' })).toHaveClass(/step-done/);
+  await expect(card.locator('.badge', { hasText: '1/2' })).toBeVisible();
+
+  // Rename a different step and save.
+  await card.getByTitle('Edit').click();
+  await page.locator('.modal-card .step-builder-row input').first().fill('Alpha renamed');
+  await page.getByRole('button', { name: 'Save' }).click();
+
+  // Beta's completion survives the edit.
+  await expect(card.locator('.step-item-title', { hasText: 'Alpha renamed' })).toBeVisible();
+  await expect(card.locator('.step-item', { hasText: 'Beta' })).toHaveClass(/step-done/);
+  await expect(card.locator('.badge', { hasText: '1/2' })).toBeVisible();
+});
+
 test('can defer a multistep project via edit modal', async ({ page }) => {
   await addMultistepProject(page, 'Active Project', ['Step one']);
   const card = page.locator('.task-card', { hasText: 'Active Project' });
