@@ -1,5 +1,12 @@
-import { test, expect } from './fixtures';
-import { goToTab, addTask, addRepeatedTask, addMultistepProject } from './helpers';
+import {
+  expect,
+  test,
+} from './fixtures';
+import {
+  addMultistepProject,
+  addRepeatedTask,
+  addTask,
+} from './helpers';
 
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
@@ -163,6 +170,7 @@ test('editing a project preserves a completed step', async ({ page }) => {
   await page.getByRole('button', { name: 'Save' }).click();
 
   // Beta's completion survives the edit.
+  // possible flaky test failure here
   await expect(card.locator('.step-item-title', { hasText: 'Alpha renamed' })).toBeVisible();
   await expect(card.locator('.step-item', { hasText: 'Beta' })).toHaveClass(/step-done/);
   await expect(card.locator('.badge', { hasText: '1/2' })).toBeVisible();

@@ -29,6 +29,7 @@ import {
 } from '../utils';
 import { DeleteButton } from './DeleteButton';
 import { EditModalShell } from './EditModalShell';
+import { ErrorBanner } from './ErrorBanner';
 import {
   DayNightSelect,
   LogModeSelect,
@@ -48,6 +49,7 @@ export default function RepeatedTasksTab({ db }: Props) {
   const [dayNight, setDayNight] = useState<DayNight>(DayNight.NIGHT);
   const [expanded, setExpanded] = useState<Record<number, boolean>>({});
   const [editing, setEditing]   = useState<RepeatedTask | null>(null);
+  const [error, setError]       = useState<string | null>(null);
 
   const load = useCallback(() => dbGetAll(db, ItemType.REPEATED).then(setTasks), [db]);
   useEffect(() => { load(); }, [load]);
@@ -56,14 +58,21 @@ export default function RepeatedTasksTab({ db }: Props) {
     e.preventDefault();
     const t = title.trim();
     if (!t) return;
-    await dbAdd(db, makeTask(ItemType.REPEATED, {
-      title: t,
-      resetDay: resetDay === 'daily' ? 'daily' : parseInt(resetDay, 10),
-      logMode,
-      logs: [],
-      starred,
-      dayNight,
-    }));
+    setError(null);
+    try {
+      await dbAdd(db, makeTask(ItemType.REPEATED, {
+        title: t,
+        resetDay: resetDay === 'daily' ? 'daily' : parseInt(resetDay, 10),
+        logMode,
+        logs: [],
+        starred,
+        dayNight,
+      }));
+    } catch (err) {
+      console.error(err);
+      setError("Couldn't add repeat task — please try again.");
+      return;
+    }
     setTitle('');
     setResetDay('daily');
     setLogMode('today');
@@ -74,20 +83,34 @@ export default function RepeatedTasksTab({ db }: Props) {
 
   async function logTask(task: RepeatedTask) {
     if (!canLog(task)) return;
+    setError(null);
     const today    = todayStr();
     const recorded = task.logMode === 'yesterday' ? yesterdayStr() : today;
     const entry    = { actionDate: today, recordedDate: recorded };
-    await dbApplyLogged(
-      db,
-      task.id,
-      (c: RepeatedTask) => ({ ...c, logs: [...c.logs, entry] }),
-      (before) => habitLoggedEvent(before, entry),
-    );
+    try {
+      await dbApplyLogged(
+        db,
+        task.id,
+        (c: RepeatedTask) => ({ ...c, logs: [...c.logs, entry] }),
+        (before) => habitLoggedEvent(before, entry),
+      );
+    } catch (err) {
+      console.error(err);
+      setError("Couldn't log — please try again.");
+      return;
+    }
     load();
   }
 
   async function remove(id: number) {
-    await dbDelete(db, id);
+    setError(null);
+    try {
+      await dbDelete(db, id);
+    } catch (err) {
+      console.error(err);
+      setError("Couldn't delete repeat task — please try again.");
+      return;
+    }
     setExpanded(prev => {
       const { [id]: _removed, ...rest } = prev;
       return rest;
@@ -117,6 +140,7 @@ export default function RepeatedTasksTab({ db }: Props) {
 
   return (
     <div>
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
       <form className="add-form" onSubmit={addTask}>
         <div className="add-form-title">New Repeat Task</div>
         <div className="form-row">
@@ -200,6 +224,7 @@ export default function RepeatedTasksTab({ db }: Props) {
           task={editing}
           onSave={saveEdit}
           onClose={() => setEditing(null)}
+          onSaveError={() => setError("Couldn't save — please try again.")}
         />
       )}
     </div>
@@ -210,10 +235,12 @@ function EditRepeatModal({
   task,
   onSave,
   onClose,
+  onSaveError,
 }: {
   task: RepeatedTask;
   onSave: (patch: Pick<RepeatedTask, 'title' | 'starred' | 'dayNight' | 'resetDay' | 'logMode'>) => Promise<void>;
   onClose: () => void;
+  onSaveError?: (err: unknown) => void;
 }) {
   const [title, setTitle]       = useState(task.title);
   const [starred, setStarred]   = useState(task.starred);
@@ -226,6 +253,7 @@ function EditRepeatModal({
       title="Edit Repeat Task"
       canSubmit={!!title.trim()}
       onClose={onClose}
+      onSaveError={onSaveError}
       onSubmit={() => onSave({
         title: title.trim(),
         starred,

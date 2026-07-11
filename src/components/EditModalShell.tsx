@@ -15,6 +15,7 @@ export function EditModalShell({
   canSubmit = true,
   onSubmit,
   onClose,
+  onSaveError,
   children,
 }: {
   title: string;
@@ -22,6 +23,7 @@ export function EditModalShell({
   canSubmit?: boolean;
   onSubmit: () => Promise<void>;
   onClose: () => void;
+  onSaveError?: (err: unknown) => void;
   children: ComponentChildren;
 }) {
   const [conflict, setConflict] = useState(false);
@@ -47,7 +49,7 @@ export function EditModalShell({
       await onSubmit();
     } catch (err) {
       if (err instanceof ConflictError) setConflict(true);
-      else throw err;
+      else onSaveError?.(err);
     }
   }
 

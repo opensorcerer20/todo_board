@@ -29,6 +29,7 @@ import {
 } from '../utils';
 import { DeleteButton } from './DeleteButton';
 import { EditModalShell } from './EditModalShell';
+import { ErrorBanner } from './ErrorBanner';
 import {
   DayNightSelect,
   StarToggle,
@@ -41,6 +42,7 @@ export default function MultistepTab({ db }: Props) {
   const [title, setTitle]       = useState('');
   const [deferred, setDeferred] = useState(false);
   const [editing, setEditing]   = useState<MultiStepProject | null>(null);
+  const [error, setError]       = useState<string | null>(null);
   const { steps, setSteps, addStep, updateStep, removeStep, moveStep } = useStepManager([newStep()]);
 
   const load = useCallback(() => dbGetAll(db, ItemType.MULTISTEP).then(setTasks), [db]);
@@ -53,7 +55,14 @@ export default function MultistepTab({ db }: Props) {
       .filter(s => s.title.trim())
       .map(s => ({ ...s, title: s.title.trim() }));
     if (!t || validSteps.length === 0) return;
-    await dbAdd(db, makeTask(ItemType.MULTISTEP, { title: t, steps: validSteps, deferred }));
+    setError(null);
+    try {
+      await dbAdd(db, makeTask(ItemType.MULTISTEP, { title: t, steps: validSteps, deferred }));
+    } catch (err) {
+      console.error(err);
+      setError("Couldn't add task — please try again.");
+      return;
+    }
     setTitle('');
     setSteps([newStep()]);
     setDeferred(false);
@@ -61,20 +70,34 @@ export default function MultistepTab({ db }: Props) {
   }
 
   async function toggleStep(project: MultiStepProject, stepId: string) {
-    await dbApplyLogged(
-      db,
-      project.id,
-      (c: MultiStepProject) => ({
-        ...c,
-        steps: c.steps.map(s => (s.id === stepId ? { ...s, completedAt: s.completedAt ? null : todayStr() } : s)),
-      }),
-      (before) => stepCompletionEvent(before, stepId),
-    );
+    setError(null);
+    try {
+      await dbApplyLogged(
+        db,
+        project.id,
+        (c: MultiStepProject) => ({
+          ...c,
+          steps: c.steps.map(s => (s.id === stepId ? { ...s, completedAt: s.completedAt ? null : todayStr() } : s)),
+        }),
+        (before) => stepCompletionEvent(before, stepId),
+      );
+    } catch (err) {
+      console.error(err);
+      setError("Couldn't update step — please try again.");
+      return;
+    }
     load();
   }
 
   async function remove(id: number) {
-    await dbDelete(db, id);
+    setError(null);
+    try {
+      await dbDelete(db, id);
+    } catch (err) {
+      console.error(err);
+      setError("Couldn't delete task — please try again.");
+      return;
+    }
     load();
   }
 
@@ -90,6 +113,7 @@ export default function MultistepTab({ db }: Props) {
 
   return (
     <div>
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
       <form className="add-form" onSubmit={addTask}>
         <div className="add-form-title">New Multistep Task</div>
 
@@ -205,6 +229,7 @@ export default function MultistepTab({ db }: Props) {
           project={editing}
           onSave={saveEdit}
           onClose={() => setEditing(null)}
+          onSaveError={() => setError("Couldn't save — please try again.")}
         />
       )}
     </div>
@@ -276,10 +301,12 @@ function EditProjectModal({
   project,
   onSave,
   onClose,
+  onSaveError,
 }: {
   project: MultiStepProject;
   onSave: (patch: Pick<MultiStepProject, 'title' | 'deferred' | 'steps'>) => Promise<void>;
   onClose: () => void;
+  onSaveError?: (err: unknown) => void;
 }) {
   const [title, setTitle]       = useState(project.title);
   const [deferred, setDeferred] = useState(project.deferred);
@@ -293,6 +320,7 @@ function EditProjectModal({
   return (
     <EditModalShell
       title="Edit Multistep Task"
+      onSaveError={onSaveError}
       large
       canSubmit={!!title.trim() && trimmedSteps.length > 0 && allStepsTitled}
       onClose={onClose}

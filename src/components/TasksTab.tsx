@@ -29,6 +29,7 @@ import {
 } from '../utils';
 import { DeleteButton } from './DeleteButton';
 import { EditModalShell } from './EditModalShell';
+import { ErrorBanner } from './ErrorBanner';
 import {
   DayNightSelect,
   StarToggle,
@@ -47,6 +48,7 @@ export default function TasksTab({ db }: Props) {
   const [dayNight,  setDayNight]  = useState<typeof DayNight[keyof typeof DayNight]>(DayNight.NIGHT);
   const [taskKind,  setTaskKind]  = useState<typeof ItemType.TASK | typeof ItemType.REQUEST>(ItemType.TASK);
   const [editing,   setEditing]   = useState<EditableTask | null>(null);
+  const [error,     setError]     = useState<string | null>(null);
 
   const load = useCallback(() => Promise.all([
     dbGetAll(db, ItemType.TASK).then(setTasks),
@@ -58,10 +60,17 @@ export default function TasksTab({ db }: Props) {
     e.preventDefault();
     const t = title.trim();
     if (!t) return;
+    setError(null);
     const newItem = taskKind === ItemType.REQUEST
       ? makeTask(ItemType.REQUEST, { title: t, starred, dayNight })
       : makeTask(ItemType.TASK,    { title: t, starred, dayNight });
-    await dbAdd(db, newItem);
+    try {
+      await dbAdd(db, newItem);
+    } catch (err) {
+      console.error(err);
+      setError("Couldn't add task — please try again.");
+      return;
+    }
     setTitle('');
     setStarred(false);
     setDayNight(DayNight.NIGHT);
@@ -69,17 +78,31 @@ export default function TasksTab({ db }: Props) {
   }
 
   async function toggle(task: EditableTask) {
-    await dbApplyLogged(
-      db,
-      task.id,
-      (c: EditableTask) => ({ ...c, completedAt: c.completedAt ? null : todayStr() }),
-      taskCompletionEvent,
-    );
+    setError(null);
+    try {
+      await dbApplyLogged(
+        db,
+        task.id,
+        (c: EditableTask) => ({ ...c, completedAt: c.completedAt ? null : todayStr() }),
+        taskCompletionEvent,
+      );
+    } catch (err) {
+      console.error(err);
+      setError("Couldn't update task — please try again.");
+      return;
+    }
     load();
   }
 
   async function remove(id: number) {
-    await dbDelete(db, id);
+    setError(null);
+    try {
+      await dbDelete(db, id);
+    } catch (err) {
+      console.error(err);
+      setError("Couldn't delete task — please try again.");
+      return;
+    }
     load();
   }
 
@@ -102,6 +125,7 @@ export default function TasksTab({ db }: Props) {
 
   return (
     <div>
+      {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
       <form className="add-form" onSubmit={addTask}>
         <div className="add-form-title">New Task</div>
         <div className="form-row">
@@ -190,6 +214,7 @@ export default function TasksTab({ db }: Props) {
           task={editing}
           onSave={saveEdit}
           onClose={() => setEditing(null)}
+          onSaveError={() => setError("Couldn't save — please try again.")}
         />
       )}
     </div>
@@ -211,10 +236,12 @@ function EditModal({
   task,
   onSave,
   onClose,
+  onSaveError,
 }: {
   task: EditableTask;
   onSave: (patch: Pick<EditableTask, 'title' | 'starred' | 'dayNight'>) => Promise<void>;
   onClose: () => void;
+  onSaveError?: (err: unknown) => void;
 }) {
   const [title, setTitle]       = useState(task.title);
   const [starred, setStarred]   = useState(task.starred);
@@ -226,6 +253,7 @@ function EditModal({
       canSubmit={!!title.trim()}
       onClose={onClose}
       onSubmit={() => onSave({ title: title.trim(), starred, dayNight })}
+      onSaveError={onSaveError}
     >
       <div className="form-row" style={{ marginBottom: 16 }}>
         <StarToggle starred={starred} onToggle={() => setStarred(p => !p)} style={{ alignSelf: 'flex-end' }} />
