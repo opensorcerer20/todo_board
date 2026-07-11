@@ -10,7 +10,6 @@ import TasksTab from './components/TasksTab';
 import {
   dbExportAll,
   dbGetActivity,
-  migrateDB,
   openDB,
 } from './db';
 // import { runLegacyImport } from './legacyImport';
@@ -33,7 +32,6 @@ export default function App() {
 
   useEffect(() => {
     openDB()
-      .then(db => migrateDB(db).then(() => db))
       // .then(db => runLegacyImport(db).then(() => db))
       .then(setDb)
       .catch(console.error);

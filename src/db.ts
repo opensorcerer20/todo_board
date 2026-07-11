@@ -7,10 +7,7 @@ import type {
   RequestTask,
   TaskType,
 } from './types';
-import {
-  DayNight,
-  ItemType,
-} from './types';
+import { ItemType } from './types';
 import {
   activitySeedEvents,
   deepEqual,
@@ -170,75 +167,6 @@ export function dbGetActivity(db: IDBDatabase): Promise<ActivityEvent[]> {
       events.sort((a, b) => a.at.localeCompare(b.at) || a.id - b.id);
       resolve(events);
     };
-    req.onerror = () => reject(req.error);
-  });
-}
-
-const KNOWN_TASK_TYPES: readonly string[] = [
-  ItemType.TASK, ItemType.REQUEST, ItemType.REPEATED, ItemType.MULTISTEP,
-];
-
-/**
- * Backfills missing fields on existing records.
- * Runs once on page load; skips records that are already complete.
- *
- * Validates every record's `type` up front, before writing anything, so an
- * unrecognized type (e.g. corrupt data, or a new ItemType added without
- * updating this function) fails loudly instead of silently skipping the
- * record's backfill.
- */
-export function migrateDB(db: IDBDatabase): Promise<void> {
-  return new Promise((resolve, reject) => {
-    const tx    = db.transaction('tasks', 'readwrite');
-    const store = tx.objectStore('tasks');
-    const req   = store.getAll();
-
-    req.onsuccess = () => {
-      const records = req.result as Record<string, unknown>[];
-
-      const unknown = records.find(r => !KNOWN_TASK_TYPES.includes(r.type as string));
-      if (unknown) {
-        reject(new Error(`migrateDB: record ${String(unknown.id)} has unrecognized type "${String(unknown.type)}"`));
-        return;
-      }
-
-      for (const r of records) {
-        let changed = false;
-        const type = r.type as TaskType;
-
-        switch (type) {
-          case ItemType.TASK:
-          case ItemType.REQUEST:
-          case ItemType.REPEATED:
-            if (r.starred === undefined) { r.starred = false; changed = true; }
-            if (r.dayNight === undefined) { r.dayNight = DayNight.NIGHT; changed = true; }
-            break;
-          case ItemType.MULTISTEP: {
-            if (r.deferred === undefined) { r.deferred = false; changed = true; }
-            const steps = r.steps as Record<string, unknown>[] | undefined;
-            if (Array.isArray(steps)) {
-              for (const s of steps) {
-                if (s.starred === undefined)  { s.starred = false; changed = true; }
-                if (s.dayNight === undefined) { s.dayNight = DayNight.NIGHT; changed = true; }
-                if (s.deferred === undefined) { s.deferred = false; changed = true; }
-              }
-            }
-            break;
-          }
-          default: {
-            // Exhaustiveness guard: a new TaskType member left unhandled here is a compile error.
-            const _exhaustive: never = type;
-            void _exhaustive;
-          }
-        }
-
-        if (changed) store.put(r);
-      }
-
-      tx.oncomplete = () => resolve();
-      tx.onerror    = () => reject(tx.error);
-    };
-
     req.onerror = () => reject(req.error);
   });
 }
