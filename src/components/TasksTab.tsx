@@ -8,7 +8,7 @@ import {
   dbAdd,
   dbApplyLogged,
   dbDelete,
-  dbGetAll,
+  dbExportAll,
   dbUpdateSafe,
 } from '../db';
 import type {
@@ -50,10 +50,10 @@ export default function TasksTab({ db }: Props) {
   const [editing,   setEditing]   = useState<EditableTask | null>(null);
   const [error,     setError]     = useState<string | null>(null);
 
-  const load = useCallback(() => Promise.all([
-    dbGetAll(db, ItemType.TASK).then(setTasks),
-    dbGetAll(db, ItemType.REQUEST).then(setRequests),
-  ]), [db]);
+  const load = useCallback(() => dbExportAll(db).then(all => {
+    setTasks(all.filter(t => t.type === ItemType.TASK) as PlainTask[]);
+    setRequests(all.filter(t => t.type === ItemType.REQUEST) as RequestTask[]);
+  }), [db]);
   useEffect(() => { load(); }, [load]);
 
   async function addTask(e: Event) {

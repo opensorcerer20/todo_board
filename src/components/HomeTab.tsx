@@ -1,8 +1,26 @@
-import { useCallback, useEffect, useState } from 'preact/hooks';
-import { dbGetAll } from '../db';
-import { canLog, resetLabel, todayStr } from '../utils';
-import { DayNight, DayNightLabel, ItemType } from '../types';
-import type { MultiStepProject, PlainTask, RequestTask, RepeatedTask } from '../types';
+import {
+  useCallback,
+  useEffect,
+  useState,
+} from 'preact/hooks';
+
+import { dbExportAll } from '../db';
+import type {
+  MultiStepProject,
+  PlainTask,
+  RepeatedTask,
+  RequestTask,
+} from '../types';
+import {
+  DayNight,
+  DayNightLabel,
+  ItemType,
+} from '../types';
+import {
+  canLog,
+  resetLabel,
+  todayStr,
+} from '../utils';
 
 interface Props { db: IDBDatabase }
 
@@ -111,12 +129,12 @@ export default function HomeTab({ db }: Props) {
   const [repeated, setRepeated] = useState<RepeatedTask[]>([]);
   const [projects, setProjects] = useState<MultiStepProject[]>([]);
 
-  const load = useCallback(() => Promise.all([
-    dbGetAll(db, ItemType.TASK).then(setTasks),
-    dbGetAll(db, ItemType.REQUEST).then(setRequests),
-    dbGetAll(db, ItemType.REPEATED).then(setRepeated),
-    dbGetAll(db, ItemType.MULTISTEP).then(setProjects),
-  ]), [db]);
+  const load = useCallback(() => dbExportAll(db).then(all => {
+    setTasks(all.filter(t => t.type === ItemType.TASK) as PlainTask[]);
+    setRequests(all.filter(t => t.type === ItemType.REQUEST) as RequestTask[]);
+    setRepeated(all.filter(t => t.type === ItemType.REPEATED) as RepeatedTask[]);
+    setProjects(all.filter(t => t.type === ItemType.MULTISTEP) as MultiStepProject[]);
+  }), [db]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -281,9 +299,8 @@ export default function HomeTab({ db }: Props) {
 
         {/* LEFT column — tasks-panel wraps both domain cards so task/habit queries work across domains */}
         <div data-testid="tasks-panel" style={{ flex: '2 1 430px', minWidth: '300px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {/* Work/Errand card — habits-panel scoped here since all streak tests use Day-mode habits */}
-          {renderDomainCard(DayNightLabel.DAY,   dayTaskItems,   dayHabits,   { 'data-testid': 'habits-panel' })}
-          {renderDomainCard(DayNightLabel.NIGHT, nightTaskItems, nightHabits)}
+          {renderDomainCard(DayNightLabel.DAY, dayTaskItems, dayHabits, { 'data-testid': 'habits-panel' })}
+          {renderDomainCard(DayNightLabel.NIGHT, nightTaskItems, nightHabits, { 'data-testid': 'habits-panel' })}
         </div>
 
         {/* RIGHT column — projects + requests */}
