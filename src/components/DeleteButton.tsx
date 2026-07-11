@@ -56,7 +56,7 @@ function DeletePopover({ x, y, onConfirm, onDismiss }: {
       }}>
         <span style={{ fontSize: '12px', color: 'var(--text-muted)', fontWeight: 500 }}>Delete?</span>
         <button
-          style={{ background: 'var(--success)', color: '#fff', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
+          style={{ background: 'var(--cancel)', color: '#fff', border: 'none', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', fontWeight: 600, cursor: 'pointer' }}
           onClick={onDismiss}
         >
           Cancel

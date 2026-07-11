@@ -67,6 +67,12 @@ export function multistepComplete(project: MultiStepProject): boolean {
   return project.steps.length > 0 && project.steps.every(s => s.completedAt !== null);
 }
 
+/** Derived completion date for a fully-completed project: the latest step completedAt. */
+export function multistepCompletedAt(project: MultiStepProject): string | null {
+  if (!multistepComplete(project)) return null;
+  return project.steps.reduce((max, s) => (s.completedAt! > max ? s.completedAt! : max), project.steps[0].completedAt!);
+}
+
 // Typed factory — returns the correct Omit<T, 'id'> shape per type.
 export function makeTask(type: typeof ItemType.TASK,      overrides?: Partial<Omit<PlainTask,         'id' | 'type'>>): Omit<PlainTask,         'id'>;
 export function makeTask(type: typeof ItemType.REQUEST,   overrides?: Partial<Omit<RequestTask,       'id' | 'type'>>): Omit<RequestTask,       'id'>;

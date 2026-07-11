@@ -23,9 +23,11 @@ import {
   changedFields,
   makeTask,
   multistepComplete,
+  multistepCompletedAt,
   newStep,
   stepCompletionEvent,
   todayStr,
+  yesterdayStr,
 } from '../utils';
 import { DeleteButton } from './DeleteButton';
 import { EditModalShell } from './EditModalShell';
@@ -159,16 +161,25 @@ export default function MultistepTab({ db }: Props) {
       )}
 
       {tasks.length > 0 && (() => {
-        const active   = tasks.filter(p => !p.deferred);
-        const deferred = tasks.filter(p => p.deferred);
+        const completed = tasks.filter(p => {
+          const completedAt = multistepCompletedAt(p);
+          return completedAt !== null && completedAt >= yesterdayStr();
+        });
+        // Completed more than a day ago — same as TasksTab, these age out of view entirely.
+        const stale    = tasks.filter(p => {
+          const completedAt = multistepCompletedAt(p);
+          return completedAt !== null && completedAt < yesterdayStr();
+        });
+        const active   = tasks.filter(p => !p.deferred && !completed.includes(p) && !stale.includes(p));
+        const deferred = tasks.filter(p => p.deferred && !completed.includes(p) && !stale.includes(p));
 
-        function renderCard(project: MultiStepProject) {
+        function renderCard(project: MultiStepProject, dimmed = false) {
           const total   = project.steps.length;
           const done    = project.steps.filter(s => s.completedAt !== null).length;
           const allDone = multistepComplete(project);
           const pct     = total > 0 ? (done / total) * 100 : 0;
           return (
-            <div className="task-card" key={project.id}>
+            <div className="task-card" key={project.id} style={dimmed ? { opacity: 0.65 } : undefined}>
               <div className="task-card-header">
                 <span className={'task-title' + (allDone ? ' completed' : '')}>{project.title}</span>
                 {project.deferred && <span className="badge badge-amber">⏸ Deferred</span>}
@@ -205,22 +216,33 @@ export default function MultistepTab({ db }: Props) {
         }
 
         return (
-          <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="section-label">Active</div>
-              {active.length === 0
-                ? <div className="home-col-empty">No active projects</div>
-                : <div className="task-list">{active.map(renderCard)}</div>
-              }
+          <>
+            <div style={{ display: 'flex', gap: '24px', alignItems: 'flex-start' }}>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="section-label">Active</div>
+                {active.length === 0
+                  ? <div className="home-col-empty">No active projects</div>
+                  : <div className="task-list">{active.map(p => renderCard(p))}</div>
+                }
+              </div>
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div className="section-label">Deferred</div>
+                {deferred.length === 0
+                  ? <div className="home-col-empty">No deferred projects</div>
+                  : <div className="task-list">{deferred.map(p => renderCard(p))}</div>
+                }
+              </div>
             </div>
-            <div style={{ flex: 1, minWidth: 0 }}>
-              <div className="section-label">Deferred</div>
-              {deferred.length === 0
-                ? <div className="home-col-empty">No deferred projects</div>
-                : <div className="task-list">{deferred.map(renderCard)}</div>
-              }
-            </div>
-          </div>
+
+            {completed.length > 0 && (
+              <>
+                <div className="section-label">Completed · {completed.length}</div>
+                <div className="task-list">
+                  {completed.map(p => renderCard(p, true))}
+                </div>
+              </>
+            )}
+          </>
         );
       })()}
 
