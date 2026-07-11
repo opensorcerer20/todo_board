@@ -149,3 +149,45 @@ export function activitySeedEvents(tasks: AnyTask[]): Omit<ActivityEvent, 'id'>[
 
   return events.sort((a, b) => a.at.localeCompare(b.at));
 }
+
+/**
+ * Activity-event factories for the live completion actions (as opposed to
+ * activitySeedEvents, which derives history in bulk during the v1→v2 upgrade).
+ * Callers pass the pre-mutation record; the factory reads its current
+ * completedAt to decide 'completed' vs 'uncompleted' and stamps `at` itself,
+ * so dbApplyLogged callers never need to know ActivityEvent's field names.
+ */
+export function taskCompletionEvent(before: PlainTask | RequestTask): Omit<ActivityEvent, 'id'> {
+  return {
+    at: new Date().toISOString(),
+    kind: before.type,
+    action: before.completedAt ? 'uncompleted' : 'completed',
+    itemId: before.id,
+    title: before.title,
+  };
+}
+
+export function stepCompletionEvent(project: MultiStepProject, stepId: string): Omit<ActivityEvent, 'id'> {
+  const step = project.steps.find(s => s.id === stepId);
+  return {
+    at: new Date().toISOString(),
+    kind: ItemType.STEP,
+    action: step?.completedAt ? 'uncompleted' : 'completed',
+    itemId: stepId,
+    title: step?.title ?? '',
+    projectId: project.id,
+    projectTitle: project.title,
+  };
+}
+
+export function habitLoggedEvent(before: RepeatedTask, entry: LogEntry): Omit<ActivityEvent, 'id'> {
+  return {
+    at: new Date().toISOString(),
+    kind: ItemType.HABIT,
+    action: 'logged',
+    itemId: before.id,
+    title: before.title,
+    actionDate: entry.actionDate,
+    recordedDate: entry.recordedDate,
+  };
+}

@@ -20,6 +20,7 @@ import {
 import {
   canLog,
   changedFields,
+  habitLoggedEvent,
   makeTask,
   recalcActionDates,
   resetLabel,
@@ -76,26 +77,21 @@ export default function RepeatedTasksTab({ db }: Props) {
     const today    = todayStr();
     const recorded = task.logMode === 'yesterday' ? yesterdayStr() : today;
     const entry    = { actionDate: today, recordedDate: recorded };
-    // @todo consider passing data without needing to know shape
     await dbApplyLogged(
       db,
       task.id,
       (c: RepeatedTask) => ({ ...c, logs: [...c.logs, entry] }),
-      (before) => ({
-        at: new Date().toISOString(),
-        kind: ItemType.HABIT,
-        action: 'logged',
-        itemId: before.id,
-        title: before.title,
-        actionDate: entry.actionDate,
-        recordedDate: entry.recordedDate,
-      }),
+      (before) => habitLoggedEvent(before, entry),
     );
     load();
   }
 
   async function remove(id: number) {
     await dbDelete(db, id);
+    setExpanded(prev => {
+      const { [id]: _removed, ...rest } = prev;
+      return rest;
+    });
     load();
   }
 

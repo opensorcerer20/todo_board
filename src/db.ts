@@ -5,6 +5,7 @@ import type {
   PlainTask,
   RepeatedTask,
   RequestTask,
+  TaskType,
 } from './types';
 import {
   DayNight,
@@ -59,7 +60,7 @@ export function dbGetAll(db: IDBDatabase, type: typeof ItemType.TASK): Promise<P
 export function dbGetAll(db: IDBDatabase, type: typeof ItemType.REQUEST): Promise<RequestTask[]>;
 export function dbGetAll(db: IDBDatabase, type: typeof ItemType.REPEATED): Promise<RepeatedTask[]>;
 export function dbGetAll(db: IDBDatabase, type: typeof ItemType.MULTISTEP): Promise<MultiStepProject[]>;
-export function dbGetAll(db: IDBDatabase, type: string): Promise<AnyTask[]> {
+export function dbGetAll(db: IDBDatabase, type: TaskType): Promise<AnyTask[]> {
   return new Promise((res, rej) => {
     const req = db.transaction('tasks', 'readonly').objectStore('tasks').getAll();
     req.onsuccess = () => res((req.result as AnyTask[]).filter(t => t.type === type));
@@ -173,9 +174,18 @@ export function dbGetActivity(db: IDBDatabase): Promise<ActivityEvent[]> {
   });
 }
 
+const KNOWN_TASK_TYPES: readonly string[] = [
+  ItemType.TASK, ItemType.REQUEST, ItemType.REPEATED, ItemType.MULTISTEP,
+];
+
 /**
  * Backfills missing fields on existing records.
  * Runs once on page load; skips records that are already complete.
+ *
+ * Validates every record's `type` up front, before writing anything, so an
+ * unrecognized type (e.g. corrupt data, or a new ItemType added without
+ * updating this function) fails loudly instead of silently skipping the
+ * record's backfill.
  */
 export function migrateDB(db: IDBDatabase): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -185,25 +195,40 @@ export function migrateDB(db: IDBDatabase): Promise<void> {
 
     req.onsuccess = () => {
       const records = req.result as Record<string, unknown>[];
+
+      const unknown = records.find(r => !KNOWN_TASK_TYPES.includes(r.type as string));
+      if (unknown) {
+        reject(new Error(`migrateDB: record ${String(unknown.id)} has unrecognized type "${String(unknown.type)}"`));
+        return;
+      }
+
       for (const r of records) {
         let changed = false;
+        const type = r.type as TaskType;
 
-        // Fields for task, request, and repeated types
-        if (r.type === ItemType.TASK || r.type === ItemType.REQUEST || r.type === ItemType.REPEATED) {
-          if (r.starred === undefined) { r.starred = false; changed = true; }
-          if (r.dayNight === undefined) { r.dayNight = DayNight.NIGHT; changed = true; }
-        }
-
-        // Fields for multistep projects and their steps
-        if (r.type === ItemType.MULTISTEP) {
-          if (r.deferred === undefined) { r.deferred = false; changed = true; }
-          const steps = r.steps as Record<string, unknown>[] | undefined;
-          if (Array.isArray(steps)) {
-            for (const s of steps) {
-              if (s.starred === undefined)  { s.starred = false; changed = true; }
-              if (s.dayNight === undefined) { s.dayNight = DayNight.NIGHT; changed = true; }
-              if (s.deferred === undefined) { s.deferred = false; changed = true; }
+        switch (type) {
+          case ItemType.TASK:
+          case ItemType.REQUEST:
+          case ItemType.REPEATED:
+            if (r.starred === undefined) { r.starred = false; changed = true; }
+            if (r.dayNight === undefined) { r.dayNight = DayNight.NIGHT; changed = true; }
+            break;
+          case ItemType.MULTISTEP: {
+            if (r.deferred === undefined) { r.deferred = false; changed = true; }
+            const steps = r.steps as Record<string, unknown>[] | undefined;
+            if (Array.isArray(steps)) {
+              for (const s of steps) {
+                if (s.starred === undefined)  { s.starred = false; changed = true; }
+                if (s.dayNight === undefined) { s.dayNight = DayNight.NIGHT; changed = true; }
+                if (s.deferred === undefined) { s.deferred = false; changed = true; }
+              }
             }
+            break;
+          }
+          default: {
+            // Exhaustiveness guard: a new TaskType member left unhandled here is a compile error.
+            const _exhaustive: never = type;
+            void _exhaustive;
           }
         }
 

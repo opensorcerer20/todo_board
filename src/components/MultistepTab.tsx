@@ -24,6 +24,7 @@ import {
   makeTask,
   multistepComplete,
   newStep,
+  stepCompletionEvent,
   todayStr,
 } from '../utils';
 import { DeleteButton } from './DeleteButton';
@@ -60,7 +61,6 @@ export default function MultistepTab({ db }: Props) {
   }
 
   async function toggleStep(project: MultiStepProject, stepId: string) {
-    // @todo consider passing data without needing to know shape
     await dbApplyLogged(
       db,
       project.id,
@@ -68,18 +68,7 @@ export default function MultistepTab({ db }: Props) {
         ...c,
         steps: c.steps.map(s => (s.id === stepId ? { ...s, completedAt: s.completedAt ? null : todayStr() } : s)),
       }),
-      (before) => {
-        const step = before.steps.find(s => s.id === stepId);
-        return {
-          at: new Date().toISOString(),
-          kind: ItemType.STEP,
-          action: step?.completedAt ? 'uncompleted' : 'completed',
-          itemId: stepId,
-          title: step?.title ?? '',
-          projectId: before.id,
-          projectTitle: before.title,
-        };
-      },
+      (before) => stepCompletionEvent(before, stepId),
     );
     load();
   }

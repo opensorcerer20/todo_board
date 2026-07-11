@@ -23,6 +23,7 @@ import {
 import {
   changedFields,
   makeTask,
+  taskCompletionEvent,
   todayStr,
   yesterdayStr,
 } from '../utils';
@@ -68,18 +69,11 @@ export default function TasksTab({ db }: Props) {
   }
 
   async function toggle(task: EditableTask) {
-    // @todo consider passing data without needing to know shape
     await dbApplyLogged(
       db,
       task.id,
       (c: EditableTask) => ({ ...c, completedAt: c.completedAt ? null : todayStr() }),
-      (before) => ({
-        at: new Date().toISOString(),
-        kind: before.type,
-        action: before.completedAt ? 'uncompleted' : 'completed',
-        itemId: before.id,
-        title: before.title,
-      }),
+      taskCompletionEvent,
     );
     load();
   }
