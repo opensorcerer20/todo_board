@@ -55,7 +55,7 @@ Development happened over ~2 weeks across feature branches merged via pull reque
 
 - **Tasks** — one-time items. Check them off to complete; completed tasks show crossed out until midnight, then drop off the list.
 - **Repeat Tasks (habits)** — recurring items with a configurable reset schedule (daily or a specific weekday) and a **log mode**: *log today's date* (mark off as you go) or *log yesterday's date* (log the morning after). Once logged, a habit locks until its next reset cycle. Each log stores both the action date (when you clicked) and the recorded date (today or yesterday).
-- **Multistep Projects** — projects made of ordered steps, each step a task in its own right. A progress bar tracks completion; steps can be reordered at creation. Active and deferred projects live in separate columns.
+- **Multistep Projects** — projects made of ordered steps, each step a task in its own right. A progress bar tracks completion; steps can be reordered at creation. Active and deferred projects live in separate columns; a fully-completed project moves into its own Completed section and, like a plain task, ages out of view the day after completion.
 
 ### Metadata
 
@@ -73,6 +73,7 @@ A read-only daily view with a Work/Errand · Personal toggle that filters the wh
 
 - **Export** — one click downloads all IndexedDB records as a dated JSON file for backup or migration.
 - **Light / Dark mode** — persisted to `localStorage`.
+- **Error banners** — a failed add, edit, delete, or log operation surfaces a dismissible banner instead of failing silently, so a rejected write is never mistaken for a successful one.
 
 ---
 
@@ -84,7 +85,7 @@ A read-only daily view with a Work/Errand · Personal toggle that filters the wh
 | Build | Vite 5 |
 | Language | TypeScript 5 (strict) |
 | Storage | IndexedDB (single type-discriminated store) |
-| Tests | Playwright (61 end-to-end tests) |
+| Tests | Playwright (end-to-end) |
 
 ---
 
@@ -106,20 +107,22 @@ SimpleTask
 
 ## Testing
 
-All 61 tests are Playwright end-to-end tests running against real Chromium. This is the correct layer for this app: every meaningful behavior — IndexedDB reads/writes, DOM interaction, derived state like streaks — only exists in a browser context, so there's no pure-logic layer worth isolating separately. **Each test gets a fresh browser context** (and therefore a fresh IndexedDB), so there's no shared state to reset between tests.
+Every test is a Playwright end-to-end test running against real Chromium. This is the correct layer for this app: every meaningful behavior — IndexedDB reads/writes, DOM interaction, derived state like streaks — only exists in a browser context, so there's no pure-logic layer worth isolating separately. **Each test gets a fresh browser context** (and therefore a fresh IndexedDB), so there's no shared state to reset between tests.
 
-| Suite | Tests | Covers |
-|---|---|---|
-| `tasks.spec.ts` | 4 | Core CRUD: add, delete, complete, uncomplete |
-| `editing.spec.ts` | 12 | Edit modal across all three task types |
-| `metadata.spec.ts` | 10 | Starred, domain badges, deferred behavior |
-| `requests.spec.ts` | 14 | Request items and their Home-tab placement |
-| `export.spec.ts` | 8 | JSON export shape and completeness |
-| `streak.spec.ts` | 6 | Streak math for both log modes |
-| `logmode.spec.ts` | 6 | Today vs. yesterday logging semantics |
-| `home.spec.ts` | 1 | Domain/step interaction regression |
+Coverage, by theme rather than by file (files get added, split, and renamed as the suite grows — the themes don't):
 
-The streak and log-mode suites are the most interesting: they verify the one-day **anchor shift** for `logMode: 'yesterday'` habits, where "logged yesterday" maps to "recorded two days ago" and must still count as an active streak. Logs are injected directly into IndexedDB via `page.evaluate()` rather than clicking the Log button repeatedly.
+- **Core CRUD** — add, edit, delete, complete, and uncomplete across all four item types (tasks, requests, repeated habits, multistep projects).
+- **Metadata & placement** — starred pinning, day/night domain badges, deferred visibility, and Home-tab surfacing rules.
+- **Habits & streaks** — log-mode semantics (today vs. yesterday), streak math, and reset-cycle gating.
+- **Multistep projects** — step completion, progress tracking, and the Completed section's next-day aging-out behavior.
+- **Concurrency & conflict safety** — the snapshot-diff-merge pattern behind conflict-safe edits, including detecting and surfacing collisions from a concurrent edit in another tab.
+- **Activity log** — the append-only event log: seeding from existing state on first upgrade, logging every completion/uncompletion/habit-log action, and surviving deletes and renames of the source item.
+- **Error handling** — a failed operation surfaces a banner instead of silently no-op'ing.
+- **Data-layer integrity** — a fresh database builds cleanly via `onupgradeneeded`, and exports are complete and correctly shaped.
+
+The streak and log-mode tests are the most interesting: they verify the one-day **anchor shift** for `logMode: 'yesterday'` habits, where "logged yesterday" maps to "recorded two days ago" and must still count as an active streak. Logs are injected directly into IndexedDB via `page.evaluate()` rather than clicking the Log button repeatedly.
+
+Run `npm test` for the current test count and pass/fail status — intentionally not duplicated here, since it changes with every test added.
 
 ---
 
@@ -130,6 +133,20 @@ npm install
 npm run dev        # dev server at localhost:5173
 npm run build      # production build
 npm run typecheck  # tsc --noEmit
-npm test           # run the 61 Playwright tests
+npm test           # run the Playwright end-to-end suite
 npm run test:ui    # Playwright interactive UI
 ```
+
+---
+
+## Updates - July 12, 2026
+
+- Removed `migrateDB`, the ad-hoc field-backfill routine that re-scanned and rewrote every record on **every page load**. Schema/data migration is now handled entirely by `DB_VERSION`-gated `onupgradeneeded`, which only runs once, when the version actually changes.
+- Tightened `db.ts` type safety: `dbGetAll`'s implementation signature now takes `TaskType` instead of a bare `string`; the (now-removed) migration function used a `switch`/`never` exhaustiveness guard so adding a new `ItemType` later fails to compile until every handler accounts for it.
+- Restored and hardened `tests/screenshots.ts` (the script used to generate marketing screenshots) after pulling it back from a stash:
+  - It now goes through the shared `./fixtures` test-database isolation. Previously it bypassed that isolation entirely, opening the real production database name directly — the root cause of an earlier incident where a screenshot script wiped real IndexedDB data.
+  - Dropped a hardcoded IndexedDB schema version that had drifted out of sync with the app's actual `DB_VERSION`.
+  - Replaced loose `any[]` typing over fixture records with the app's real `AnyTask` union, so a future field rename in `src/types.ts` is caught by the compiler here too.
+  - Added an assertion that the fixture titles used to demonstrate "completed today" styling actually exist in `sample-data.json` — a silent rename/typo now fails the test loudly instead of quietly producing a screenshot that no longer shows the feature it's meant to demonstrate.
+  - Hardened date handling in `freshen()` (the function that shifts fixture dates forward so screenshots look current): a malformed or missing date across the *entire* dataset now fails with a clear message instead of silently comparing against a magic sentinel value, and a malformed date on any *individual* record or step — the kind of mistake a hand-edit to `sample-data.json` could introduce — is now caught and reported by name (record type, title, id, and field) before it can silently produce `NaN`-laced garbage dates downstream.
+- `HomeTab` and `TasksTab` each loaded their data via 2–4 separate `dbGetAll` calls — one full IndexedDB `getAll()` scan per item type. Both now fetch once via `dbExportAll` and filter client-side by type, cutting redundant scans on every load/tab switch.
