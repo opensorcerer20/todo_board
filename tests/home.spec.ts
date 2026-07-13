@@ -1,4 +1,7 @@
-import { test, expect } from './fixtures';
+import {
+  expect,
+  test,
+} from './fixtures';
 import { goToTab } from './helpers';
 
 test.beforeEach(async ({ page }) => {

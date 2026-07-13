@@ -49,7 +49,8 @@ export function EditModalShell({
       await onSubmit();
     } catch (err) {
       if (err instanceof ConflictError) setConflict(true);
-      else onSaveError?.(err);
+      else if (onSaveError) onSaveError(err);
+      else console.error('EditModalShell: unhandled save error (no onSaveError provided)', err);
     }
   }
 
