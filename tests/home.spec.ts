@@ -4,6 +4,14 @@ import {
 } from './fixtures';
 import { goToTab } from './helpers';
 
+async function addDayHabit(page: import('@playwright/test').Page, title: string, starred = false) {
+  await goToTab(page, 'Repeat Tasks');
+  if (starred) await page.locator('.add-form .btn-star').click();
+  await page.getByPlaceholder('Habit or recurring task…').fill(title);
+  await page.locator('.form-group', { hasText: 'Time' }).locator('select').selectOption('day');
+  await page.getByRole('button', { name: 'Add' }).click();
+}
+
 test.beforeEach(async ({ page }) => {
   await page.goto('/');
 });
@@ -43,4 +51,29 @@ test('task list does not show a later step when an earlier step in a different d
 
   // The Day step (current) should appear in the Work/Errand section.
   await expect(tasksPanel.getByText('Current day step')).toBeVisible();
+});
+
+// ── Habits section ───────────────────────────────────────────────────────────
+
+test('Home shows a Habits heading and sorts starred habits first', async ({ page }) => {
+  await addDayHabit(page, 'Regular habit');
+  await addDayHabit(page, 'Starred habit', true);
+  await goToTab(page, 'Home');
+
+  const dayPanel = page.getByTestId('habits-panel');
+  await expect(dayPanel.getByText('Habits', { exact: true })).toBeVisible();
+
+  const titles = dayPanel.locator('[data-testid^="habit-row-"]');
+  await expect(titles).toHaveCount(2);
+  // Starred habit must come first regardless of creation order.
+  await expect(titles.nth(0)).toContainText('Starred habit');
+  await expect(titles.nth(1)).toContainText('Regular habit');
+});
+
+test('Home shows no Habits section when there are no habits', async ({ page }) => {
+  await goToTab(page, 'Home');
+
+  const dayPanel = page.getByTestId('habits-panel');
+  await expect(dayPanel.getByText('Habits', { exact: true })).not.toBeVisible();
+  await expect(dayPanel.locator('[data-testid^="habit-row-"]')).toHaveCount(0);
 });
