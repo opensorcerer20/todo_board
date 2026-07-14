@@ -113,6 +113,17 @@ export default function MultistepTab({ db }: Props) {
     load();
   }
 
+  // Mirror the edit modal's guard: a project needs a name and at least one
+  // titled step (there's always ≥1 step row, so this also enforces "no zero-step
+  // project"). Blanking a step title disables Create rather than silently no-op'ing.
+  const trimmedSteps   = steps.map(s => ({ ...s, title: s.title.trim() }));
+  const allStepsTitled = trimmedSteps.every(s => s.title !== '');
+  const canCreate      = !!title.trim() && trimmedSteps.length > 0 && allStepsTitled;
+  // Only warn once the user has started building — a pristine form (name blank,
+  // single empty step) shouldn't nag before any input.
+  const started        = !!title.trim() || steps.length > 1 || trimmedSteps.some(s => s.title !== '');
+  const showStepWarning = started && !allStepsTitled;
+
   return (
     <div>
       {error && <ErrorBanner message={error} onDismiss={() => setError(null)} />}
@@ -148,8 +159,14 @@ export default function MultistepTab({ db }: Props) {
           onMove={moveStep}
         />
 
+        {showStepWarning && (
+          <div style={{ color: 'var(--warning)', fontSize: 13, marginTop: 8 }}>
+            Every step needs a title. Use ✕ to remove a step.
+          </div>
+        )}
+
         <div style={{ marginTop: 16 }}>
-          <button className="btn btn-primary" type="submit">Create Task</button>
+          <button className="btn btn-primary" type="submit" disabled={!canCreate}>Create Task</button>
         </div>
       </form>
 

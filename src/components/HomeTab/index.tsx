@@ -18,6 +18,7 @@ import {
 } from '../../types';
 import {
   canLog,
+  stepsLeftLabel,
   todayStr,
 } from '../../utils';
 import { DomainCard } from './DomainCard';
@@ -58,13 +59,12 @@ export default function HomeTab({ db }: Props) {
     const steps: TaskItem[] = activeProjects.flatMap(p => {
       const step = p.steps.find(s => s.completedAt === null);
       if (!step || (step.dayNight ?? DayNight.NIGHT) !== dn) return [];
-      const stepNo = p.steps.indexOf(step) + 1;
       return [{
         key: 'step-' + p.id + '-' + step.id,
         title: step.title, done: false,
         starred: step.starred,
         projectName: p.title,
-        stepLabel: 'Step ' + stepNo + ' of ' + p.steps.length,
+        stepLabel: stepsLeftLabel(p),
         isProject: true,
       }];
     });

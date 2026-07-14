@@ -1,4 +1,5 @@
 import type { MultiStepProject } from '../../types';
+import { stepsLeftLabel } from '../../utils';
 import { MONO } from './styles';
 
 export function ProjectsCard({ projects }: { projects: MultiStepProject[] }) {
@@ -10,10 +11,9 @@ export function ProjectsCard({ projects }: { projects: MultiStepProject[] }) {
     const incomplete = p.steps.filter(s => s.completedAt === null);
     const currentStep = incomplete[0];
     const nextStep    = incomplete[1];
-    const stepNo = Math.min(completedCount + 1, total);
     return {
       id: p.id, name: p.title,
-      stepLabel: 'Step ' + stepNo + ' of ' + total,
+      stepLabel: stepsLeftLabel(p),
       current: currentStep?.title ?? '(all steps done)',
       currentStarred: currentStep?.starred ?? false,
       next: nextStep?.title ?? '',
