@@ -67,6 +67,17 @@ export function multistepComplete(project: MultiStepProject): boolean {
   return project.steps.length > 0 && project.steps.every(s => s.completedAt !== null);
 }
 
+/**
+ * Label for a project's remaining work, shared by the Home task list and the
+ * Active-projects card so they always agree. Counts not-yet-completed steps:
+ * "1 step left" / "3 steps left", or "all steps done" when none remain.
+ */
+export function stepsLeftLabel(project: MultiStepProject): string {
+  const left = project.steps.filter(s => s.completedAt === null).length;
+  if (left === 0) return 'all steps done';
+  return `${left} step${left === 1 ? '' : 's'} left`;
+}
+
 /** Derived completion date for a fully-completed project: the latest step completedAt. */
 export function multistepCompletedAt(project: MultiStepProject): string | null {
   if (!multistepComplete(project)) return null;
