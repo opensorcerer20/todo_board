@@ -1,5 +1,16 @@
-import type { RepeatedTask } from '../../types';
+import type { MultiStepProject, RepeatedTask } from '../../types';
 import { resetLabel } from '../../utils';
+
+/**
+ * Label for a project's remaining work, shared by the Home task list and the
+ * Active-projects card so they always agree. Counts not-yet-completed steps:
+ * "1 step left" / "3 steps left", or "all steps done" when none remain.
+ */
+export function stepsLeftLabel(project: MultiStepProject): string {
+  const left = project.steps.filter(s => s.completedAt === null).length;
+  if (left === 0) return 'all steps done';
+  return `${left} step${left === 1 ? '' : 's'} left`;
+}
 
 export function addDays(dateStr: string, n: number): string {
   const [y, m, d] = dateStr.split('-').map(Number);

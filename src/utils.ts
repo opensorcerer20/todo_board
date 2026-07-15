@@ -1,6 +1,17 @@
-import { DayNight, ItemType } from './types';
 import type {
-  ActivityEvent, AnyTask, LogEntry, PlainTask, RequestTask, RepeatedTask, MultiStepProject, MultistepTask, TaskType,
+  ActivityEvent,
+  AnyTask,
+  LogEntry,
+  MultiStepProject,
+  MultistepTask,
+  PlainTask,
+  RepeatedTask,
+  RequestTask,
+  TaskType,
+} from './types';
+import {
+  DayNight,
+  ItemType,
 } from './types';
 
 export const DAY_NAMES = [
@@ -42,7 +53,7 @@ export const todayStr = (): string => localDateStr(0);
 export const yesterdayStr = (): string => localDateStr(-1);
 
 /** Most recent occurrence of weekday (0=Sun…6=Sat) on or before today. */
-export function cycleStartStr(weekday: number): string {
+function cycleStartStr(weekday: number): string {
   const d = new Date();
   d.setHours(0, 0, 0, 0);
   d.setDate(d.getDate() - ((d.getDay() - weekday + 7) % 7));
@@ -65,17 +76,6 @@ export function resetLabel(task: RepeatedTask): string {
 
 export function multistepComplete(project: MultiStepProject): boolean {
   return project.steps.length > 0 && project.steps.every(s => s.completedAt !== null);
-}
-
-/**
- * Label for a project's remaining work, shared by the Home task list and the
- * Active-projects card so they always agree. Counts not-yet-completed steps:
- * "1 step left" / "3 steps left", or "all steps done" when none remain.
- */
-export function stepsLeftLabel(project: MultiStepProject): string {
-  const left = project.steps.filter(s => s.completedAt === null).length;
-  if (left === 0) return 'all steps done';
-  return `${left} step${left === 1 ? '' : 's'} left`;
 }
 
 /** Derived completion date for a fully-completed project: the latest step completedAt. */

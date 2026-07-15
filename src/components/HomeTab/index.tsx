@@ -18,13 +18,12 @@ import {
 } from '../../types';
 import {
   canLog,
-  stepsLeftLabel,
   todayStr,
 } from '../../utils';
 import { DomainCard } from './DomainCard';
 import { ProjectsCard } from './ProjectsCard';
 import { RequestsCard } from './RequestsCard';
-import { computeStreak, streakLabel } from './streak';
+import { computeStreak, stepsLeftLabel, streakLabel } from './utils';
 import type { HabitItem, TaskItem } from './types';
 
 interface Props { db: IDBDatabase }

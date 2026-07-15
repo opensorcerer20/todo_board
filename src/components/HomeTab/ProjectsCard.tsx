@@ -1,5 +1,5 @@
 import type { MultiStepProject } from '../../types';
-import { stepsLeftLabel } from '../../utils';
+import { stepsLeftLabel } from './utils';
 import { MONO } from './styles';
 
 export function ProjectsCard({ projects }: { projects: MultiStepProject[] }) {
