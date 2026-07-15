@@ -28,6 +28,7 @@ import {
   yesterdayStr,
 } from '../utils';
 import { DeleteButton } from './DeleteButton';
+import { EditButton } from './EditButton';
 import { EditModalShell } from './EditModalShell';
 import { ErrorBanner } from './ErrorBanner';
 import {
@@ -180,7 +181,7 @@ export default function RepeatedTasksTab({ db }: Props) {
                 >
                   {eligible ? 'Log ✓' : 'Logged'}
                 </button>
-                <button className="btn-icon btn-edit" title="Edit" onClick={() => setEditing(task)}>🖌</button>
+                <EditButton onClick={() => setEditing(task)} />
                 <DeleteButton onConfirm={() => remove(task.id)} />
               </div>
 

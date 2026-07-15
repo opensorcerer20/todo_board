@@ -59,9 +59,12 @@ export async function addDayHabit(page: Page, title: string, starred = false) {
   await page.getByRole('button', { name: 'Add' }).click();
 }
 
-export async function addTask(page: Page, title: string) {
+export async function addTask(page: Page, title: string, dayNight: 'day' | 'night' = 'night') {
   await goToTab(page, 'Tasks');
   await page.getByPlaceholder('What needs to be done?').fill(title);
+  if (dayNight === 'day') {
+    await page.locator('.add-form .form-group', { hasText: 'Time' }).locator('select').selectOption('day');
+  }
   await page.getByRole('button', { name: 'Add' }).click();
 }
 

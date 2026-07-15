@@ -5,6 +5,7 @@ import {
 import {
   addDayHabit,
   addMultistepProject,
+  addTask,
   daysAgo,
   goToTab,
   patchSteps,
@@ -174,13 +175,29 @@ test('a project with every step done shows "all steps done" in the Active projec
  * TaskList.tsx:8). A domain with habits but no tasks shows "nothing here" directly
  * above its habits.
  */
-// test('a domain with habits but no tasks does not show a spurious "nothing here"', async ({ page }) => {
-//   await addDayHabit(page, 'Morning stretch');
-//   await goToTab(page, 'Home');
+test('a domain with habits but no tasks does not show a spurious "nothing here"', async ({ page }) => {
+  await addDayHabit(page, 'Morning stretch');
+  await goToTab(page, 'Home');
 
-//   // The Day domain card (first habits-panel) has a habit, so it must not claim
-//   // to be empty.
-//   const dayCard = page.getByTestId('habits-panel').first();
-//   await expect(dayCard.getByText('Morning stretch')).toBeVisible();
-//   await expect(dayCard).toContainText('No tasks');
-// });
+  // The Day domain card (first habits-panel) has a habit, so it must not claim
+  // to be empty.
+  const dayCard = page.getByTestId('habits-panel').first();
+  await expect(dayCard.getByText('Morning stretch')).toBeVisible();
+  await expect(dayCard).toContainText('No tasks');
+  // The card has a habit, so it must not claim to have no habits.
+  await expect(dayCard).not.toContainText('No habits');
+});
+
+/**
+ * Mirror of the above: a domain with a task but no habits shows "No habits"
+ * (and not "No tasks"). Confirms each empty-state path is independent.
+ */
+test('a domain with tasks but no habits does not show a spurious "No tasks"', async ({ page }) => {
+  await addTask(page, 'Water the plants', 'day');
+  await goToTab(page, 'Home');
+
+  const dayCard = page.getByTestId('habits-panel').first();
+  await expect(dayCard.getByText('Water the plants')).toBeVisible();
+  await expect(dayCard).toContainText('No habits');
+  await expect(dayCard).not.toContainText('No tasks');
+});

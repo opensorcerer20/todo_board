@@ -5,9 +5,6 @@ import type { TaskItem } from './types';
 export function TaskList({ items }: { items: TaskItem[] }) {
   const pinned = items.filter(t => t.starred);
   const other  = items.filter(t => !t.starred);
-  if (items.length === 0) return (
-    <div style={{ fontFamily: MONO, fontSize: '12px', color: 'var(--text-dim)', padding: '4px 0 6px' }}>nothing here</div>
-  );
   return (
     <div>
       {pinned.length > 0 && (

@@ -30,6 +30,7 @@ import {
   yesterdayStr,
 } from '../utils';
 import { DeleteButton } from './DeleteButton';
+import { EditButton } from './EditButton';
 import { EditModalShell } from './EditModalShell';
 import { ErrorBanner } from './ErrorBanner';
 import {
@@ -203,7 +204,7 @@ export default function MultistepTab({ db }: Props) {
                 <span className={`badge ${allDone ? 'badge-green' : 'badge-gray'}`}>
                   {done}/{total}
                 </span>
-                <button className="btn-icon btn-edit" title="Edit" onClick={() => setEditing(project)}>🖌</button>
+                <EditButton onClick={() => setEditing(project)} />
                 <DeleteButton onConfirm={() => remove(project.id)} />
               </div>
               <div className="progress-bar-wrap">
