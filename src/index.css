@@ -16,11 +16,11 @@
   --success: #059669;
   --success-light: #d1fae5;
   --danger: #dc2626;
-  --danger-light: #fee2e2;
+  --danger-text: #ffffff;
   --warning: #d97706;
   --warning-light: #fef3c7;
-  --cancel: #6b7280;
-  --cancel-hover: #565d68;
+  --cancel: #585f6b;
+  --cancel-hover: #464c56;
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.05);
   --shadow: 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 2px rgba(0, 0, 0, 0.06);
   --radius: 10px;
@@ -44,8 +44,8 @@
   --primary-hover: #8fa5d0;
   --success: #5f8f74;
   --success-light: rgba(95, 143, 116, 0.12);
-  --danger: #e05555;
-  --danger-light: rgba(220, 80, 80, 0.12);
+  --danger: #c0392b;
+  --danger-text: #ffffff;
   --warning: #d8a85a;
   --warning-light: rgba(216, 168, 90, 0.12);
   --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.3);
@@ -252,7 +252,7 @@ select:focus {
   border-radius: var(--radius-sm);
   transition: background 0.1s, color 0.1s;
 }
-.btn-icon:hover { background: var(--danger-light); color: var(--danger); }
+.btn-icon:hover { background: var(--danger); color: var(--danger-text); }
 
 /* ── Cards ──────────────────────────────────────────────── */
 .task-list { display: flex; flex-direction: column; gap: 10px; }
@@ -370,8 +370,6 @@ input[type='checkbox'] {
   grid-template-rows: auto auto;
   gap: 20px;
 }
-
-.home-col {}
 
 .home-col-label {
   font-size: 12px;

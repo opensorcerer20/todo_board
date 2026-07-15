@@ -6,8 +6,8 @@ export function ConflictBanner() {
       role="alert"
       style={{
         display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'space-between',
-        background: 'var(--danger-light)', border: '1px solid var(--danger)',
-        color: 'var(--danger)', borderRadius: 8, padding: '10px 12px', marginBottom: 12,
+        background: 'var(--danger)', border: '1px solid var(--danger)',
+        color: 'var(--danger-text)', borderRadius: 8, padding: '10px 12px', marginBottom: 12,
         fontSize: 13,
       }}
     >

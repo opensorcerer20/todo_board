@@ -8,8 +8,8 @@ export function ErrorBanner({ message, onDismiss }: { message: string; onDismiss
       role="alert"
       style={{
         display: 'flex', alignItems: 'center', gap: 12, justifyContent: 'space-between',
-        background: 'var(--danger-light)', border: '1px solid var(--danger)',
-        color: 'var(--danger)', borderRadius: 8, padding: '10px 12px', marginBottom: 12,
+        background: 'var(--danger)', border: '1px solid var(--danger)',
+        color: 'var(--danger-text)', borderRadius: 8, padding: '10px 12px', marginBottom: 12,
         fontSize: 13,
       }}
     >
@@ -17,7 +17,7 @@ export function ErrorBanner({ message, onDismiss }: { message: string; onDismiss
       <button
         type="button"
         className="btn-icon"
-        style={{ flexShrink: 0, color: 'var(--danger)' }}
+        style={{ flexShrink: 0, color: 'var(--danger-text)' }}
         onClick={onDismiss}
       >
         ×
